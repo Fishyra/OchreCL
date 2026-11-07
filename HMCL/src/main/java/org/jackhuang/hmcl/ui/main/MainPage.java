@@ -97,7 +97,22 @@ public final class MainPage extends StackPane implements DecoratorPage {
 
     private RemoteVersion lastShownVersion;
 
-    {
+    /// Creates the original full home controls when explicitly requested by upstream integrations.
+    public MainPage() {
+        this(false);
+    }
+
+    /// Creates a compatibility model without allocating the retired home view when requested.
+    /// @param modelOnly whether to keep only instance/update properties for the Øchre shell
+    public MainPage(boolean modelOnly) {
+        if (modelOnly) {
+            updatePane = new StackPane();
+            menuButton = new JFXButton();
+            state.setValue(new State(Metadata.NAME, null, false, false, false));
+            FXUtils.onChangeAndOperate(selectedRepositorySnapshot, ignored ->
+                    mutableInstances.setAll(GameDirectoryManager.getSelectedRepository().getDisplayInstances().toList()));
+            return;
+        }
         HBox titleNode = new HBox(8);
         titleNode.setPadding(new Insets(0, 0, 0, 2));
         titleNode.setAlignment(Pos.CENTER_LEFT);

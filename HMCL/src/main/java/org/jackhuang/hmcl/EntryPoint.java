@@ -144,10 +144,10 @@ public final class EntryPoint {
         }
     }
 
+    /// Records compatibility-layer use without opening an upstream native warning window.
     private static void checkWine() {
         if (OperatingSystem.isRunningUnderWine()) {
-            LOG.warning("HMCL is running under Wine or its distributions!");
-            showWarning(i18n("fatal.wine_warning"));
+            LOG.warning("ØchreCL is running under Wine; compatibility-layer testing does not replace native Windows validation.");
         }
     }
 

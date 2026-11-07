@@ -960,7 +960,7 @@ public final class Themes {
 
     /// Creates a JavaFX background from the current theme color scheme surface container.
     private static LauncherBackground createThemeColorBackground(double opacity) {
-        return createPaintBackground(getColorScheme().getColor(ColorRole.SURFACE_CONTAINER), opacity);
+        return createPaintBackground(OchrePalette.color(getColorScheme(), ColorRole.SURFACE_CONTAINER), opacity);
     }
 
     /// Creates a JavaFX image background with a separately stored node opacity.
@@ -969,7 +969,7 @@ public final class Themes {
                 image,
                 BackgroundRepeat.NO_REPEAT,
                 BackgroundRepeat.NO_REPEAT,
-                BackgroundPosition.DEFAULT,
+                BackgroundPosition.CENTER,
                 new BackgroundSize(
                         BackgroundSize.AUTO,
                         BackgroundSize.AUTO,

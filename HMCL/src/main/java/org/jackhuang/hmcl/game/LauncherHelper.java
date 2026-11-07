@@ -26,7 +26,7 @@ import org.jackhuang.hmcl.ui.construct.DialogCloseEvent;
 import org.jackhuang.hmcl.ui.construct.MessageDialogPane.MessageType;
 import org.jackhuang.hmcl.ui.construct.MessageDialogPane;
 import org.jackhuang.hmcl.ui.construct.PromptDialogPane;
-import org.jackhuang.hmcl.ui.construct.TaskExecutorDialogPane;
+import org.jackhuang.hmcl.ui.construct.OchreLaunchPane;
 import org.jackhuang.hmcl.util.*;
 import org.jackhuang.hmcl.util.i18n.I18n;
 import org.jackhuang.hmcl.util.io.FileUtils;
@@ -91,7 +91,8 @@ public final class LauncherHelper {
         return gameInstance.getRepository();
     }
 
-    private final TaskExecutorDialogPane launchingStepsPane = new TaskExecutorDialogPane(TaskCancellationAction.NORMAL);
+    /// Real launch progress alongside the redacted game process output.
+    private final OchreLaunchPane launchingStepsPane = new OchreLaunchPane();
 
     public Account getAccount() {
         return account;
@@ -864,6 +865,7 @@ public final class LauncherHelper {
         @Override
         public void setProcess(ManagedProcess process) {
             this.process = process;
+            org.jackhuang.hmcl.server.RuntimeSession.game(gameInstance.getInstanceRoot().toAbsolutePath().normalize().toString()).attach(process.getProcess());
 
             String command = new CommandBuilder().addAll(process.getCommands()).toString();
 
@@ -977,6 +979,9 @@ public final class LauncherHelper {
             if (forbiddenAccessToken != null)
                 log = log.replace(forbiddenAccessToken, "<access token>");
 
+            launchingStepsPane.appendGameLog(log);
+            org.jackhuang.hmcl.server.RuntimeSession.game(gameInstance.getInstanceRoot().toAbsolutePath().normalize().toString()).append(log);
+
             Log4jLevel level = isErrorStream && !log.startsWith("[authlib-injector]") ? Log4jLevel.ERROR : null;
             if (showLogs) {
                 if (level == null)
@@ -1000,6 +1005,7 @@ public final class LauncherHelper {
                     try {
                         if (!lwjgl) {
                             lwjgl = true;
+                            org.jackhuang.hmcl.server.RuntimeSession.game(gameInstance.getInstanceRoot().toAbsolutePath().normalize().toString()).status("运行中");
                             finishLaunch();
                         }
                     } finally {
@@ -1011,8 +1017,10 @@ public final class LauncherHelper {
 
         @Override
         public void onExit(int exitCode, ExitType exitType) {
+            org.jackhuang.hmcl.server.RuntimeSession.game(gameInstance.getInstanceRoot().toAbsolutePath().normalize().toString())
+                    .status(exitType == ExitType.NORMAL || exitType == ExitType.INTERRUPTED || org.jackhuang.hmcl.server.RuntimeSession.game(gameInstance.getInstanceRoot().toAbsolutePath().normalize().toString()).wasStopRequested() ? "已停止" : "异常退出");
             if (showLogs) {
-                logBuffer.add(new Log(String.format("[%s] [HMCL ProcessListener] Minecraft exit with code %d(0x%x), type is %s.", TIME_FORMATTER.format(Instant.now()), exitCode, exitCode, exitType), Log4jLevel.INFO));
+                logBuffer.add(new Log(String.format("[%s] [ØchreCL ProcessListener] Minecraft exit with code %d(0x%x), type is %s.", TIME_FORMATTER.format(Instant.now()), exitCode, exitCode, exitType), Log4jLevel.INFO));
                 submitLogThread.interrupt();
                 try {
                     submitLogThread.join();
@@ -1037,7 +1045,7 @@ public final class LauncherHelper {
                 }
             }
 
-            if (exitType != ExitType.NORMAL) {
+            if (exitType != ExitType.NORMAL && !org.jackhuang.hmcl.server.RuntimeSession.game(gameInstance.getInstanceRoot().toAbsolutePath().normalize().toString()).wasStopRequested()) {
                 gameInstance.markLaunchedAbnormally();
                 runLater(() -> new GameCrashWindow(process, exitType, gameInstance, launchOptions, logs).show());
             }

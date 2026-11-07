@@ -127,7 +127,7 @@ public final class Launcher extends Application {
                 Platform.setImplicitExit(false);
                 Controllers.initialize(primaryStage);
 
-                UpdateChecker.init();
+                // ØchreCL does not check upstream launcher releases.
 
                 primaryStage.show();
             });
@@ -341,6 +341,7 @@ public final class Launcher extends Application {
     }
 
     public static void stopApplication() {
+        if (javafx.application.Platform.isFxApplicationThread() && org.jackhuang.hmcl.server.ServerManager.deferShutdown(Launcher::stopApplication)) return;
         LOG.info("Stopping application.\n" + StringUtils.getStackTrace(Thread.currentThread().getStackTrace()));
 
         runInFX(() -> {

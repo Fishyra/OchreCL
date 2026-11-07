@@ -2,210 +2,93 @@
 // SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-HMCL
 package org.jackhuang.hmcl.ui.main;
 
-import com.jfoenix.controls.JFXPopup;
 import javafx.beans.property.ReadOnlyObjectProperty;
-import javafx.scene.layout.Region;
-import org.jackhuang.hmcl.game.GameInstanceID;
-import org.jackhuang.hmcl.game.HMCLGameInstance;
-import org.jackhuang.hmcl.game.ModpackHelper;
-import org.jackhuang.hmcl.setting.Accounts;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.scene.control.Label;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
+import javafx.geometry.Pos;
+import org.jackhuang.hmcl.Metadata;
 import org.jackhuang.hmcl.setting.GameDirectoryManager;
-import org.jackhuang.hmcl.terracotta.TerracottaMetadata;
-import org.jackhuang.hmcl.ui.Controllers;
 import org.jackhuang.hmcl.ui.FXUtils;
-import org.jackhuang.hmcl.ui.SVG;
-import org.jackhuang.hmcl.ui.animation.AnimationUtils;
-import org.jackhuang.hmcl.ui.account.AccountAdvancedListItem;
-import org.jackhuang.hmcl.ui.account.AccountListPopupMenu;
-import org.jackhuang.hmcl.ui.construct.AdvancedListBox;
-import org.jackhuang.hmcl.ui.construct.AdvancedListItem;
-import org.jackhuang.hmcl.ui.construct.MessageDialogPane;
-import org.jackhuang.hmcl.ui.decorator.DecoratorAnimatedPage;
 import org.jackhuang.hmcl.ui.decorator.DecoratorPage;
+import org.jackhuang.hmcl.upgrade.UpdateChecker;
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
+import org.jackhuang.hmcl.game.ModpackHelper;
 import org.jackhuang.hmcl.ui.download.ModpackInstallWizardProvider;
-import org.jackhuang.hmcl.ui.instances.GameAdvancedListItem;
-import org.jackhuang.hmcl.ui.instances.GameListPopupMenu;
 import org.jackhuang.hmcl.ui.instances.Instances;
 import org.jackhuang.hmcl.ui.nbt.NBTEditorPage;
 import org.jackhuang.hmcl.ui.nbt.NBTFileType;
-import org.jackhuang.hmcl.upgrade.UpdateChecker;
-import org.jackhuang.hmcl.util.Lang;
-import org.jackhuang.hmcl.util.StringUtils;
+import org.jackhuang.hmcl.ui.construct.MessageDialogPane;
+import org.jackhuang.hmcl.ui.Controllers;
 import org.jackhuang.hmcl.util.io.FileUtils;
-import org.jackhuang.hmcl.util.platform.*;
-import org.jetbrains.annotations.Nullable;
-
+import org.jackhuang.hmcl.util.StringUtils;
 import java.nio.file.Path;
-import java.util.Locale;
-
 import static org.jackhuang.hmcl.util.i18n.I18n.i18n;
 import static org.jackhuang.hmcl.util.logging.Logger.LOG;
 
-public class RootPage extends DecoratorAnimatedPage implements DecoratorPage {
-    private MainPage mainPage = null;
+/// Empty home canvas; the persistent Øchre shell owns navigation and launch controls.
+@NotNullByDefault
+public final class RootPage extends StackPane implements DecoratorPage {
+    /// Stable home title and navigation state.
+    private final ReadOnlyObjectWrapper<State> state;
+    /// Compatibility model used by update and multiplayer integrations.
+    private @Nullable MainPage mainPage;
 
+    /// Creates the intentionally empty home canvas and compact application title.
     public RootPage() {
-        getStyleClass().remove("gray-background");
-        getLeft().getStyleClass().add("gray-background");
+        ImageView icon = new ImageView(FXUtils.newBuiltinImage("/assets/img/icon-title.png"));
+        Label name = new Label(Metadata.NAME);
+        name.getStyleClass().add("ochre-brand");
+        HBox title = new HBox(10, icon, name);
+        title.setAlignment(Pos.CENTER_LEFT);
+        state = new ReadOnlyObjectWrapper<>(new State(null, title, false, false, true));
+        getStyleClass().add("ochre-home");
+        installDropSupport();
     }
 
+    /// Preserves upstream file-drop import and NBT inspection on the empty home canvas.
+    private void installDropSupport() {
+        FXUtils.applyDragListener(this,
+                file -> ModpackHelper.isFileModpackByExtension(file) || NBTFileType.isNBTFileByExtension(file) || "json".equalsIgnoreCase(FileUtils.getExtension(file)),
+                modpacks -> {
+                    Path file = modpacks.get(0);
+                    if (ModpackHelper.isFileModpackByExtension(file)) {
+                        Controllers.getDecorator().startWizard(
+                                new ModpackInstallWizardProvider(GameDirectoryManager.getSelectedRepository(), file),
+                                i18n("install.modpack"));
+                    } else if (NBTFileType.isNBTFileByExtension(file)) {
+                        try {
+                            Controllers.navigate(new NBTEditorPage(file));
+                        } catch (Throwable e) {
+                            LOG.warning("Fail to open nbt file", e);
+                            Controllers.dialog(i18n("nbt.open.failed") + "\n\n" + StringUtils.getStackTrace(e),
+                                    i18n("message.error"), MessageDialogPane.MessageType.ERROR);
+                        }
+                    } else if ("json".equalsIgnoreCase(FileUtils.getExtension(file))) {
+                        Instances.installFromJson(GameDirectoryManager.getSelectedRepository(), file);
+                    }
+                });
+
+    }
+
+    /// Returns the application title state without adding content to the home canvas.
     @Override
     public ReadOnlyObjectProperty<State> stateProperty() {
-        return getMainPage().stateProperty();
+        return state.getReadOnlyProperty();
     }
 
-    @Override
-    protected Skin createDefaultSkin() {
-        return new Skin(this);
-    }
-
+    /// Retains the upstream current-instance and update bindings for existing integrations.
     public MainPage getMainPage() {
         if (mainPage == null) {
-            MainPage mainPage = new MainPage();
-            FXUtils.applyDragListener(mainPage,
-                    file -> ModpackHelper.isFileModpackByExtension(file) || NBTFileType.isNBTFileByExtension(file) || "json".equalsIgnoreCase(FileUtils.getExtension(file)),
-                    modpacks -> {
-                        Path file = modpacks.get(0);
-                        if (ModpackHelper.isFileModpackByExtension(file)) {
-                            Controllers.getDecorator().startWizard(
-                                    new ModpackInstallWizardProvider(GameDirectoryManager.getSelectedRepository(), file),
-                                    i18n("install.modpack"));
-                        } else if (NBTFileType.isNBTFileByExtension(file)) {
-                            try {
-                                Controllers.navigate(new NBTEditorPage(file));
-                            } catch (Throwable e) {
-                                LOG.warning("Fail to open nbt file", e);
-                                Controllers.dialog(i18n("nbt.open.failed") + "\n\n" + StringUtils.getStackTrace(e),
-                                        i18n("message.error"), MessageDialogPane.MessageType.ERROR);
-                            }
-                        } else if ("json".equalsIgnoreCase(FileUtils.getExtension(file))) {
-                            Instances.installFromJson(GameDirectoryManager.getSelectedRepository(), file);
-                        }
-                    });
-
-            FXUtils.onChangeAndOperate(GameDirectoryManager.selectedInstanceProperty(), mainPage::setCurrentGame);
-            mainPage.latestVersionProperty().bind(UpdateChecker.latestVersionProperty());
-            this.mainPage = mainPage;
+            MainPage model = new MainPage(true);
+            FXUtils.onChangeAndOperate(GameDirectoryManager.selectedInstanceProperty(), model::setCurrentGame);
+            model.latestVersionProperty().bind(UpdateChecker.latestVersionProperty());
+            mainPage = model;
         }
         return mainPage;
     }
-
-    /// Builds sidebar navigation and registers optional page preparation on its entries.
-    private static class Skin extends DecoratorAnimatedPageSkin<RootPage> {
-
-        /// Creates navigation entries, their actions, and one-shot hover preparation registrations.
-        protected Skin(RootPage control) {
-            super(control);
-
-            // first item in left sidebar
-            AccountAdvancedListItem accountListItem = new AccountAdvancedListItem();
-            accountListItem.setOnAction(e -> Controllers.navigate(Controllers.getAccountListPage()));
-            FXUtils.onSecondaryButtonClicked(accountListItem, () -> AccountListPopupMenu.show(accountListItem, JFXPopup.PopupVPosition.TOP, JFXPopup.PopupHPosition.LEFT, accountListItem.getWidth(), 0));
-            accountListItem.accountProperty().bind(Accounts.selectedAccountProperty());
-
-            // second item in left sidebar
-            GameAdvancedListItem gameListItem = new GameAdvancedListItem();
-            gameListItem.setOnAction(e -> {
-                @Nullable HMCLGameInstance instance = GameDirectoryManager.getSelectedRepository().getSelectedInstance();
-                if (instance == null) {
-                    Controllers.navigate(Controllers.getGameListPage());
-                } else {
-                    Instances.modifyGameSettings(instance);
-                }
-            });
-            FXUtils.onScroll(gameListItem, getSkinnable().getMainPage().getInstances(), list -> {
-                @Nullable HMCLGameInstance currentGame = getSkinnable().getMainPage().getCurrentGame();
-                @Nullable GameInstanceID currentId = currentGame != null ? currentGame.getId() : null;
-                return Lang.indexWhere(list, instance -> instance.getId().equals(currentId));
-            }, instance -> instance.getRepository().setSelectedInstance(instance));
-            FXUtils.onSecondaryButtonClicked(gameListItem, () -> showGameListPopupMenu(gameListItem));
-
-            if (AnimationUtils.isAnimationEnabled()) {
-                gameListItem.setPrepareAction(Controllers::prepareGameInstancePage);
-            }
-
-            // third item in left sidebar
-            AdvancedListItem gameItem = new AdvancedListItem();
-            gameItem.setLeftIcon(SVG.FORMAT_LIST_BULLETED);
-            gameItem.setTitle(i18n("instance.manage"));
-            gameItem.setOnAction(e -> Controllers.navigate(Controllers.getGameListPage()));
-            FXUtils.onSecondaryButtonClicked(gameItem, () -> showGameListPopupMenu(gameItem));
-
-            // forth item in left sidebar
-            AdvancedListItem downloadItem = new AdvancedListItem();
-            downloadItem.setLeftIcon(SVG.DOWNLOAD);
-            downloadItem.setTitle(i18n("download"));
-            downloadItem.setOnAction(e -> Controllers.navigate(Controllers.getDownloadPage()));
-
-            if (AnimationUtils.isAnimationEnabled()) {
-                downloadItem.setPrepareAction(Controllers::prepareDownloadPage);
-            }
-
-            // fifth item in left sidebar
-            AdvancedListItem launcherSettingsItem = new AdvancedListItem();
-            launcherSettingsItem.setLeftIcon(SVG.SETTINGS);
-            launcherSettingsItem.setTitle(i18n("settings"));
-            launcherSettingsItem.setOnAction(e -> {
-                Controllers.getSettingsPage().showGameSettings(GameDirectoryManager.getSelectedRepository());
-                Controllers.navigate(Controllers.getSettingsPage());
-            });
-
-            if (AnimationUtils.isAnimationEnabled()) {
-                launcherSettingsItem.setPrepareAction(Controllers::prepareSettingsPage);
-            }
-
-            // sixth item in left sidebar
-            AdvancedListItem terracottaItem = new AdvancedListItem();
-            terracottaItem.setLeftIcon(SVG.GRAPH2);
-            terracottaItem.setTitle(i18n("terracotta"));
-            terracottaItem.setOnAction(e -> {
-                if (TerracottaMetadata.PROVIDER != null) {
-                    Controllers.navigate(Controllers.getTerracottaPage());
-                } else {
-                    String message;
-                    if (Architecture.SYSTEM_ARCH.getBits() == Bits.BIT_32)
-                        message = i18n("terracotta.unsupported.arch.32bit");
-                    else if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS
-                            && !OperatingSystem.SYSTEM_VERSION.isAtLeast(OSVersion.WINDOWS_10))
-                        message = i18n("terracotta.unsupported.os.windows.old");
-                    else if (Platform.SYSTEM_PLATFORM.equals(OperatingSystem.LINUX, Architecture.LOONGARCH64_OW))
-                        message = i18n("terracotta.unsupported.arch.loongarch64_ow");
-                    else
-                        message = i18n("terracotta.unsupported");
-
-                    Controllers.dialog(message, null, MessageDialogPane.MessageType.WARNING);
-                }
-            });
-
-            // the left sidebar
-            AdvancedListBox sideBar = new AdvancedListBox()
-                    .startCategory(i18n("account").toUpperCase(Locale.ROOT))
-                    .add(accountListItem)
-                    .startCategory(i18n("instance").toUpperCase(Locale.ROOT))
-                    .add(gameListItem)
-                    .add(gameItem)
-                    .add(downloadItem)
-                    .startCategory(i18n("settings.launcher.general").toUpperCase(Locale.ROOT))
-                    .add(launcherSettingsItem)
-                    .add(terracottaItem)
-                    .addNavigationDrawerItem(i18n("contact.chat"), SVG.CHAT, () -> {
-                        Controllers.getSettingsPage().showFeedback();
-                        Controllers.navigate(Controllers.getSettingsPage());
-                    });
-
-            // the root page, with the sidebar in left, navigator in center.
-            setLeft(sideBar);
-            setCenter(getSkinnable().getMainPage());
-        }
-
-        public void showGameListPopupMenu(Region gameListItem) {
-            GameListPopupMenu.show(gameListItem,
-                    JFXPopup.PopupVPosition.TOP,
-                    JFXPopup.PopupHPosition.LEFT,
-                    gameListItem.getWidth(),
-                    0,
-                    getSkinnable().getMainPage().getInstances());
-        }
-    }
-
 }

@@ -3,6 +3,9 @@
 package org.jackhuang.hmcl.ui.main;
 
 import com.google.gson.*;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import org.jackhuang.hmcl.ui.decorator.DecoratorPage;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.layout.VBox;
@@ -33,7 +36,15 @@ import static org.jackhuang.hmcl.util.logging.Logger.LOG;
 
 /// Displays launcher, system hardware, and project information.
 @NotNullByDefault
-public final class AboutPage extends SpinnerPane {
+public final class AboutPage extends SpinnerPane implements DecoratorPage {
+    /// Standalone about-page navigation state, independent of the settings sidebar.
+    private final ReadOnlyObjectWrapper<State> pageState = new ReadOnlyObjectWrapper<>(State.fromTitle(i18n("about")));
+
+    /// Returns the standalone about-page title and back-navigation state.
+    @Override
+    public ReadOnlyObjectProperty<State> stateProperty() {
+        return pageState.getReadOnlyProperty();
+    }
 
     /// Keeps theme listeners alive while the page is visible.
     private final WeakListenerHolder holder = new WeakListenerHolder();
@@ -49,13 +60,17 @@ public final class AboutPage extends SpinnerPane {
 
         ComponentList about = new ComponentList();
         {
-            var launcher = LineButton.createExternalLinkButton(Metadata.REPOSITORY_URL);
+            var launcher = new LinePane();
             launcher.setLargeTitle(true);
             launcher.setLeading(FXUtils.newBuiltinImage("/assets/img/icon.png"));
-            launcher.setTitle("Hello Minecraft! Launcher");
+            launcher.setTitle(Metadata.FULL_NAME);
             launcher.setSubtitle(Metadata.VERSION);
 
-            about.getContent().setAll(launcher);
+            var origin = LineButton.createExternalLinkButton(Metadata.REPOSITORY_URL);
+            origin.setLargeTitle(true);
+            origin.setTitle(i18n("about.fork.origin"));
+            origin.setSubtitle(i18n("about.fork.origin.statement", Metadata.NAME));
+            about.getContent().setAll(launcher, origin);
         }
 
         ComponentList environment = new ComponentList();

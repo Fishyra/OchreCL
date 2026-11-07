@@ -43,7 +43,7 @@ import org.jetbrains.annotations.Nullable;
 @NotNullByDefault
 final class MainWindowPane extends StackPane {
     /// The diameter, in pixels, of the rounded window corners.
-    private static final double ARC = 8.0;
+    private static final double ARC = 36.0;
 
     /// The decorator whose state and actions are represented by this pane.
     private final Decorator decorator;
@@ -57,7 +57,7 @@ final class MainWindowPane extends StackPane {
     /// The title bar containing page navigation state.
     private final BorderPane titleBar;
 
-    /// The custom help, minimize, and close buttons shared by both decoration styles.
+    /// The custom fullscreen, minimize, and close buttons shared by both decoration styles.
     private final HBox windowButtons;
 
     /// The transition container used when the title-bar state changes.
@@ -72,6 +72,7 @@ final class MainWindowPane extends StackPane {
     /// @param decorator the owning window decorator
     MainWindowPane(Decorator decorator) {
         this.decorator = decorator;
+        setMinSize(0, 0);
 
         clip.widthProperty().bind(widthProperty());
         clip.heightProperty().bind(heightProperty());
@@ -92,9 +93,11 @@ final class MainWindowPane extends StackPane {
         Region backgroundNode = createBackgroundNode();
 
         frame = new BorderPane();
+        frame.setMinSize(0, 0);
         frame.getStyleClass().add("jfx-decorator");
 
-        StackPane center = new StackPane(decorator.getNavigator());
+        StackPane center = new StackPane(new OchreShell(decorator));
+        center.setMinSize(0, 0);
         center.getStyleClass().add("jfx-decorator-content-container");
         FXUtils.setOverflowHidden(center);
         frame.setCenter(center);
@@ -168,7 +171,7 @@ final class MainWindowPane extends StackPane {
         return backgroundNode;
     }
 
-    /// Creates the help, minimize, and application-close buttons.
+    /// Creates the fullscreen, minimize, and application-close buttons.
     ///
     /// @return a size-limited top-right button row
     private HBox createWindowButtons() {
@@ -177,12 +180,50 @@ final class MainWindowPane extends StackPane {
         decorator.capableDraggingWindow(buttons);
         buttons.setMaxSize(Region.USE_PREF_SIZE, 40);
 
-        JFXButton helpButton = new JFXButton();
-        helpButton.setFocusTraversable(false);
-        helpButton.setGraphic(SVG.HELP.createIcon(Themes.titleFillProperty()));
-        helpButton.getStyleClass().add("jfx-decorator-button");
-        helpButton.setOnAction(event -> FXUtils.openLink(Metadata.CONTACT_URL));
-        decorator.forbidDraggingWindow(helpButton);
+        JFXButton fullscreenButton = new JFXButton();
+        fullscreenButton.setFocusTraversable(false);
+        javafx.scene.shape.SVGPath fullscreenIcon = new javafx.scene.shape.SVGPath();
+        fullscreenIcon.setContent("M3 9V3H9V5H5V9ZM15 3H21V9H19V5H15ZM21 15V21H15V19H19V15ZM9 21H3V15H5V19H9Z");
+        fullscreenIcon.fillProperty().bind(Themes.titleFillProperty());
+        fullscreenButton.setGraphic(fullscreenIcon);
+        fullscreenButton.getStyleClass().add("jfx-decorator-button");
+        fullscreenButton.setAccessibleText("切换全屏");
+        fullscreenButton.setTooltip(new javafx.scene.control.Tooltip("进入或退出全屏（Esc 退出）"));
+        fullscreenButton.setOnAction(event -> {
+            if (getScene() != null && getScene().getWindow() instanceof javafx.stage.Stage window) {
+                if (window.isFullScreen()) {
+                    window.setFullScreen(false);
+                } else {
+                    javafx.geometry.Rectangle2D previous = new javafx.geometry.Rectangle2D(
+                            window.getX(), window.getY(), window.getWidth(), window.getHeight());
+                    javafx.geometry.Rectangle2D screen = javafx.stage.Screen.getScreensForRectangle(
+                            previous.getMinX(), previous.getMinY(), previous.getWidth(), previous.getHeight()).get(0).getBounds();
+                    // Transparent macOS stages retain their old client size in native fullscreen.
+                    window.setX(screen.getMinX());
+                    window.setY(screen.getMinY());
+                    window.setWidth(screen.getWidth());
+                    window.setHeight(screen.getHeight());
+                    javafx.beans.value.ChangeListener<Boolean> restore = new javafx.beans.value.ChangeListener<>() {
+                        /// Restores the pre-fullscreen rectangle after either the button or Esc exits.
+                        @Override
+                        public void changed(javafx.beans.value.ObservableValue<? extends Boolean> property, Boolean before, Boolean after) {
+                            if (!after) {
+                                window.fullScreenProperty().removeListener(this);
+                                javafx.application.Platform.runLater(() -> {
+                                    window.setX(previous.getMinX());
+                                    window.setY(previous.getMinY());
+                                    window.setWidth(previous.getWidth());
+                                    window.setHeight(previous.getHeight());
+                                });
+                            }
+                        }
+                    };
+                    window.fullScreenProperty().addListener(restore);
+                    window.setFullScreen(true);
+                }
+            }
+        });
+        decorator.forbidDraggingWindow(fullscreenButton);
 
         JFXButton minimizeButton = new JFXButton();
         minimizeButton.setFocusTraversable(false);
@@ -198,7 +239,7 @@ final class MainWindowPane extends StackPane {
         closeButton.setOnAction(event -> decorator.closeWindow());
         decorator.forbidDraggingWindow(closeButton);
 
-        buttons.getChildren().setAll(helpButton, minimizeButton, closeButton);
+        buttons.getChildren().setAll(fullscreenButton, minimizeButton, closeButton);
         return buttons;
     }
 
@@ -210,7 +251,7 @@ final class MainWindowPane extends StackPane {
         } else if (Themes.titleBarTransparentProperty().get()) {
             Color surface = colorScheme.getSurface();
             titleBar.setBackground(new Background(new BackgroundFill(
-                    new Color(surface.getRed(), surface.getGreen(), surface.getBlue(), 0.5),
+                    new Color(surface.getRed(), surface.getGreen(), surface.getBlue(), 0.96),
                     CornerRadii.EMPTY,
                     Insets.EMPTY)));
         } else {

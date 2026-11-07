@@ -60,6 +60,13 @@ import static org.jackhuang.hmcl.util.logging.Logger.LOG;
 /// Configures launcher appearance, background, and launcher font settings.
 @NotNullByDefault
 public class PersonalizationPage extends StackPane {
+    /// Formats a user-facing background description instead of JavaFX's internal 0x... representation.
+    private static String describeBackgroundPaint(@Nullable Paint paint) {
+        return paint instanceof Color color
+                ? i18n("launcher.background.paint") + " · " + ThemeColor.getColorDisplayName(color)
+                : i18n("launcher.background.paint");
+    }
+
     /// Property key for override-state button tooltips.
     private static final Object INHERIT_BUTTON_TOOLTIP_KEY = new Object();
 
@@ -884,7 +891,7 @@ public class PersonalizationPage extends StackPane {
                             case PAINT -> {
                                 @Nullable Paint backgroundFallbackPaint = settings().backgroundFallbackPaintProperty().get();
                                 yield backgroundFallbackPaint != null
-                                        ? backgroundFallbackPaint.toString()
+                                        ? describeBackgroundPaint(backgroundFallbackPaint)
                                         : i18n("launcher.background.fallback.paint");
                             }
                             case THEME_COLOR -> i18n("launcher.background.fallback.theme_color");
@@ -921,7 +928,7 @@ public class PersonalizationPage extends StackPane {
                                 case NETWORK -> settings().networkBackgroundImageUrlProperty().get();
                                 case PAINT -> {
                                     @Nullable Paint customBackgroundPaint = settings().customBackgroundPaintProperty().get();
-                                    yield customBackgroundPaint != null ? customBackgroundPaint.toString() : i18n("launcher.background.paint");
+                                    yield customBackgroundPaint != null ? describeBackgroundPaint(customBackgroundPaint) : i18n("launcher.background.paint");
                                 }
                             };
                         }
@@ -945,7 +952,7 @@ public class PersonalizationPage extends StackPane {
                                 case NETWORK ->
                                         Objects.toString(background.networkImageUrl(), i18n("launcher.background.network"));
                                 case PAINT -> background.paint() != null
-                                        ? background.paint().toString()
+                                        ? describeBackgroundPaint(background.paint())
                                         : i18n("launcher.background.paint");
                                 case THEME_COLOR -> i18n("launcher.background.theme_color");
                             };

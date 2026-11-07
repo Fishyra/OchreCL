@@ -55,7 +55,9 @@ import static org.jackhuang.hmcl.util.Pair.pair;
 import static org.jackhuang.hmcl.util.i18n.I18n.i18n;
 import static org.jackhuang.hmcl.util.logging.Logger.LOG;
 
-public class GameCrashWindow extends Stage {
+/// In-window game crash dialog retaining upstream diagnosis and export without creating a native window.
+@org.jetbrains.annotations.NotNullByDefault
+public class GameCrashWindow extends StackPane {
     private final HMCLGameInstance gameInstance;
     private final String memory;
     private final String total_memory;
@@ -73,8 +75,6 @@ public class GameCrashWindow extends Stage {
     private final List<Log> logs;
 
     public GameCrashWindow(ManagedProcess managedProcess, ProcessListener.ExitType exitType, HMCLGameInstance gameInstance, LaunchOptions launchOptions, List<Log> logs) {
-        Themes.applyNativeDarkMode(this);
-
         this.managedProcess = managedProcess;
         this.exitType = exitType;
         this.gameInstance = gameInstance;
@@ -91,15 +91,13 @@ public class GameCrashWindow extends Stage {
 
         this.view = new View();
 
-        this.stackPane = new StackPane(view);
-        this.feedbackTextFlow.getChildren().addAll(FXUtils.parseSegment(i18n("game.crash.feedback"), Controllers::onHyperlinkAction));
-
-        setScene(new Scene(stackPane, 800, 480));
-        StyleSheets.init(getScene());
-        setTitle(i18n("game.crash.title"));
-        FXUtils.setIcon(this);
-
-        FXUtils.addMacOSCloseWindowHandler(this, null);
+        this.stackPane = this;
+        getChildren().setAll(view);
+        getStyleClass().addAll("jfx-dialog-layout", "ochre-crash-dialog");
+        setMinSize(300, 240);
+        setPrefSize(760, 450);
+        setMaxSize(760, 500);
+        FXUtils.onEscPressed(this, () -> fireEvent(new org.jackhuang.hmcl.ui.construct.DialogCloseEvent()));
 
         analyzeCrashReport();
     }
@@ -111,7 +109,7 @@ public class GameCrashWindow extends Stage {
             String rawLog = logs.stream().map(Log::getLog).collect(Collectors.joining("\n"));
 
             // Get the crash-report from the crash-reports/xxx, or the output of console.
-            String crashReport = null;
+            @org.jetbrains.annotations.Nullable String crashReport = null;
             try {
                 crashReport = CrashReportAnalyzer.findCrashReport(rawLog);
             } catch (IOException e) {
@@ -154,7 +152,7 @@ public class GameCrashWindow extends Stage {
                     keywords.addAll(pair.getValue());
                 }
 
-                List<Node> segments = new ArrayList<>(FXUtils.parseSegment(i18n("game.crash.feedback"), Controllers::onHyperlinkAction));
+                List<Node> segments = new ArrayList<>();
 
                 LOG.info("Number of reasons: " + results.size());
                 if (results.size() > 1) {
@@ -246,14 +244,11 @@ public class GameCrashWindow extends Stage {
         return translateFabricModId(modName);
     }
 
-    private void showLogWindow() {
-        LogWindow logWindow = new LogWindow(managedProcess);
-
-        logWindow.logLine(new Log(Logger.filterForbiddenToken("Command: " + new CommandBuilder().addAll(managedProcess.getCommands())), Log4jLevel.INFO));
-        if (managedProcess.getClasspath() != null)
-            logWindow.logLine(new Log("ClassPath: " + managedProcess.getClasspath(), Log4jLevel.INFO));
-        logWindow.logLines(logs);
-        logWindow.show();
+    /// Shows the themed overlay inside the existing main window, restoring it when it was hidden.
+    public void show() {
+        var stage = Controllers.getStage();
+        if (stage != null) { stage.show(); stage.setIconified(false); stage.toFront(); }
+        Controllers.dialog(this);
     }
 
     private CompletableFuture<Path> exportGameCrashInfo() {
@@ -287,176 +282,56 @@ public class GameCrashWindow extends Stage {
                 }).thenApply(ignored -> logFile);
     }
 
+    /// Compact diagnostic workspace with tabs rather than the retired full-window information grid.
     private final class View extends VBox {
-
+        /// Builds cause, logs and environment tabs with local actions and a single dismiss button.
         View() {
-            this.getStyleClass().add("game-crash-window");
-
-            HBox titlePane = new HBox();
-            {
-                Label title = new Label();
-                HBox.setHgrow(title, Priority.ALWAYS);
-
-                switch (exitType) {
-                    case JVM_ERROR:
-                        title.setText(i18n("launch.failed.cannot_create_jvm"));
-                        break;
-                    case APPLICATION_ERROR:
-                        title.setText(i18n("launch.failed.exited_abnormally"));
-                        break;
-                    case SIGKILL:
-                        title.setText(i18n("launch.failed.sigkill"));
-                        break;
-                }
-
-                titlePane.setAlignment(Pos.CENTER);
-                titlePane.getStyleClass().addAll("jfx-tool-bar-second", "depth-1", "padding-8");
-                titlePane.getChildren().setAll(title);
-            }
-
-            HBox infoPane = new HBox(8);
-            {
-                infoPane.setPadding(new Insets(8));
-                infoPane.setAlignment(Pos.CENTER_LEFT);
-
-                TwoLineListItem launcher = new TwoLineListItem();
-                launcher.getStyleClass().setAll("two-line-item-second-large");
-                launcher.setTitle(i18n("launcher"));
-                launcher.setSubtitle(Metadata.VERSION);
-
-                TwoLineListItem instance = new TwoLineListItem();
-                instance.getStyleClass().setAll("two-line-item-second-large");
-                instance.setTitle(i18n("game.version"));
-                instance.setSubtitle(GameCrashWindow.this.gameInstance.getId().toString());
-
-                TwoLineListItem total_memory = new TwoLineListItem();
-                total_memory.getStyleClass().setAll("two-line-item-second-large");
-                total_memory.setTitle(i18n("settings.physical_memory"));
-                total_memory.setSubtitle(GameCrashWindow.this.total_memory);
-
-                TwoLineListItem memory = new TwoLineListItem();
-                memory.getStyleClass().setAll("two-line-item-second-large");
-                memory.setTitle(i18n("settings.memory"));
-                memory.setSubtitle(GameCrashWindow.this.memory);
-
-                TwoLineListItem java = new TwoLineListItem();
-                java.getStyleClass().setAll("two-line-item-second-large");
-                java.setTitle("Java");
-                java.setSubtitle(GameCrashWindow.this.java);
-
-                TwoLineListItem os = new TwoLineListItem();
-                os.getStyleClass().setAll("two-line-item-second-large");
-                os.setTitle(i18n("system.operating_system"));
-                os.setSubtitle(Objects.requireNonNullElse(OperatingSystem.OS_RELEASE_NAME, OperatingSystem.SYSTEM_NAME));
-
-                TwoLineListItem arch = new TwoLineListItem();
-                arch.getStyleClass().setAll("two-line-item-second-large");
-                arch.setTitle(i18n("system.architecture"));
-                arch.setSubtitle(Architecture.SYSTEM_ARCH.getDisplayName());
-
-                infoPane.getChildren().setAll(launcher, instance, total_memory, memory, java, os, arch);
-            }
-
-            HBox moddedPane = new HBox(8);
-            {
-                moddedPane.setPadding(new Insets(8));
-                moddedPane.setAlignment(Pos.CENTER_LEFT);
-
-                for (GameComponentAnalyzer.Mark mark : gameInstance.getAnalyzer()) {
-                    if (mark.version() != null) {
-                        TwoLineListItem item = new TwoLineListItem();
-                        item.getStyleClass().setAll("two-line-item-second-large");
-                        item.setTitle(i18n("install.installer." + mark.componentType().getPatchId()));
-                        item.setSubtitle(mark.version());
-                        moddedPane.getChildren().add(item);
-                    }
-                }
-            }
-
-            VBox gameDirPane = new VBox(8);
-            {
-                TwoLineListItem gameDir = new TwoLineListItem();
-                gameDir.getStyleClass().setAll("two-line-item-second-large");
-                gameDir.setTitle(i18n("game.directory"));
-                gameDir.setSubtitle(launchOptions.getGameDir().toAbsolutePath().toString());
-                FXUtils.installFastTooltip(gameDir, i18n("game.directory"));
-
-                TwoLineListItem javaDir = new TwoLineListItem();
-                javaDir.getStyleClass().setAll("two-line-item-second-large");
-                javaDir.setTitle(i18n("settings.game.java_directory"));
-                javaDir.setSubtitle(launchOptions.getJava().getBinary().toAbsolutePath().toString());
-                FXUtils.installFastTooltip(javaDir, i18n("settings.game.java_directory"));
-
-                Label reasonTitle = new Label(i18n("game.crash.reason"));
-                reasonTitle.getStyleClass().add("two-line-item-second-large-title");
-
-                ScrollPane reasonPane = new ScrollPane(reasonTextFlow);
-                reasonTextFlow.getStyleClass().add("crash-reason-text-flow");
-                reasonPane.setFitToWidth(true);
-                reasonPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-                reasonPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-
-                feedbackTextFlow.getStyleClass().add("crash-reason-text-flow");
-
-                gameDirPane.setPadding(new Insets(8));
-                VBox.setVgrow(gameDirPane, Priority.ALWAYS);
-                FXUtils.onChangeAndOperate(feedbackTextFlow.visibleProperty(), visible -> {
-                    if (visible) {
-                        gameDirPane.getChildren().setAll(gameDir, javaDir, new VBox(reasonTitle, reasonPane, feedbackTextFlow));
-                    } else {
-                        gameDirPane.getChildren().setAll(gameDir, javaDir, new VBox(reasonTitle, reasonPane));
-                    }
-                });
-            }
-
-            HBox toolBar = new HBox();
-            VBox.setMargin(toolBar, new Insets(0, 0, 4, 0));
-            {
-                SpinnerPane exportButtonPane = new SpinnerPane();
-                exportButtonPane.getStyleClass().add("small-spinner-pane");
-
-                JFXButton exportButton = FXUtils.newRaisedButton(i18n("logwindow.export_game_crash_logs"));
-                exportButtonPane.setContent(exportButton);
-                exportButton.setOnAction(e -> {
-                    exportButtonPane.showSpinner();
-                    exportGameCrashInfo().whenCompleteAsync((result, exception) -> {
-                        exportButtonPane.hideSpinner();
-
-                        if (exception == null) {
-                            FXUtils.showFileInExplorer(result);
-                            var dialog = new MessageDialogPane.Builder(
-                                    i18n("settings.launcher.launcher_log.export.success", result),
-                                    i18n("message.success"),
-                                    MessageDialogPane.MessageType.SUCCESS
-                            ).ok(null).build();
-                            DialogUtils.show(stackPane, dialog);
-                        } else {
-                            LOG.warning("Failed to export game crash info", exception);
-                            var dialog = new MessageDialogPane.Builder(
-                                    i18n("settings.launcher.launcher_log.export.failed") + "\n" + StringUtils.getStackTrace(exception),
-                                    i18n("message.error"),
-                                    MessageDialogPane.MessageType.ERROR
-                            ).ok(null).build();
-                            DialogUtils.show(stackPane, dialog);
-                        }
-                    }, Schedulers.javafx());
-                });
-
-                JFXButton logButton = FXUtils.newRaisedButton(i18n("logwindow.title"));
-                logButton.setOnAction(e -> showLogWindow());
-
-                JFXButton helpButton = FXUtils.newRaisedButton(i18n("help"));
-                helpButton.setOnAction(e -> FXUtils.openLink(Metadata.CONTACT_URL));
-                FXUtils.installFastTooltip(helpButton, i18n("logwindow.help"));
-
-                toolBar.setPadding(new Insets(8));
-                toolBar.setSpacing(8);
-                toolBar.getStyleClass().add("jfx-tool-bar");
-                toolBar.getChildren().setAll(exportButtonPane, logButton, helpButton);
-            }
-
-            getChildren().setAll(titlePane, infoPane, moddedPane, gameDirPane, toolBar);
+            super(12);
+            setPadding(new Insets(18));
+            Label title = new Label("游戏意外退出");
+            title.getStyleClass().add("ochre-instance-title");
+            Label instance = new Label(gameInstance.getId().toString() + " · " + exitType);
+            instance.setWrapText(true);
+            JFXButton close = new JFXButton("关闭");
+            close.setOnAction(event -> GameCrashWindow.this.fireEvent(new org.jackhuang.hmcl.ui.construct.DialogCloseEvent()));
+            javafx.scene.layout.Region spacer = new javafx.scene.layout.Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
+            HBox heading = new HBox(12, title, spacer, close); heading.setAlignment(Pos.CENTER_LEFT);
+            var tabs = new org.jackhuang.hmcl.ui.construct.OchreTabs();
+            reasonTextFlow.getStyleClass().add("crash-reason-text-flow");
+            ScrollPane reasons = new ScrollPane(reasonTextFlow); reasons.setFitToWidth(true); reasons.setMinHeight(100);
+            Label analyzing = new Label("正在分析崩溃信息…");
+            analyzing.visibleProperty().bind(loading); analyzing.managedProperty().bind(loading);
+            VBox cause = new VBox(10, analyzing, reasons); VBox.setVgrow(reasons, Priority.ALWAYS);
+            javafx.scene.control.TextArea log = new javafx.scene.control.TextArea();
+            String raw = logs.stream().map(Log::getLog).collect(Collectors.joining("\n"));
+            log.setText(raw.length() > 150000 ? raw.substring(raw.length() - 150000) : raw);
+            log.setEditable(false); log.getStyleClass().add("ochre-runtime-console");
+            javafx.scene.control.TextArea environment = new javafx.scene.control.TextArea(
+                    "游戏实例：" + gameInstance.getId() + "\n启动器：ØchreCL " + Metadata.VERSION
+                    + "\n系统内存：" + total_memory + "\n游戏内存上限：" + memory + "\nJava：" + java
+                    + "\n系统：" + OperatingSystem.SYSTEM_NAME + " · " + Architecture.SYSTEM_ARCH.getDisplayName()
+                    + "\n游戏目录：" + launchOptions.getGameDir().toAbsolutePath()
+                    + "\nJava 路径：" + launchOptions.getJava().getBinary().toAbsolutePath());
+            environment.setEditable(false); environment.setWrapText(true); environment.getStyleClass().add("ochre-runtime-console");
+            tabs.addPage("可能原因", cause); tabs.addPage("日志", log); tabs.addPage("运行环境", environment);
+            VBox.setVgrow(tabs, Priority.ALWAYS);
+            JFXButton copy = new JFXButton("复制日志"); copy.setOnAction(event -> {
+                javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent(); content.putString(log.getText());
+                javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
+            });
+            JFXButton export = new JFXButton("导出诊断信息"); export.setOnAction(event -> {
+                export.setDisable(true);
+                exportGameCrashInfo().whenCompleteAsync((path, exception) -> {
+                    export.setDisable(false);
+                    if (exception == null) {
+                        FXUtils.showFileInExplorer(path);
+                        Controllers.showToast("诊断信息已导出：" + path);
+                    } else Controllers.dialog("导出失败：" + exception.getMessage(), "导出诊断信息", MessageDialogPane.MessageType.ERROR);
+                }, Schedulers.javafx());
+            });
+            JFXButton folder = new JFXButton("打开游戏文件夹"); folder.setOnAction(event -> FXUtils.openFolder(launchOptions.getGameDir()));
+            javafx.scene.layout.FlowPane actions = new javafx.scene.layout.FlowPane(10, 8, export, copy, folder);
+            getChildren().setAll(heading, instance, tabs, actions);
         }
-
     }
 }

@@ -47,109 +47,12 @@ public final class UpdateHandler {
      * @return whether to exit
      */
     public static boolean processArguments(String[] args) {
-        breakForceUpdateFeature();
-
-        if (isNestedApplication()) {
-            // updated from old versions
-            try {
-                performMigration();
-            } catch (IOException e) {
-                LOG.warning("Failed to perform migration", e);
-                SwingUtils.showErrorDialog(i18n("fatal.apply_update_failure", Metadata.MANUAL_UPDATE_URL) + "\n" + StringUtils.getStackTrace(e));
-            }
-            return true;
-        }
-
-        if (args.length == 2 && args[0].equals("--apply-to")) {
-            if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS && !OperatingSystem.isWindows7OrLater()) {
-                SwingUtils.showErrorDialog(i18n("fatal.apply_update_need_win7", Metadata.PUBLISH_URL));
-                return true;
-            }
-
-            try {
-                applyUpdate(Paths.get(args[1]));
-            } catch (IOException e) {
-                LOG.warning("Failed to apply update", e);
-                SwingUtils.showErrorDialog(i18n("fatal.apply_update_failure", Metadata.MANUAL_UPDATE_URL) + "\n" + StringUtils.getStackTrace(e));
-            }
-            return true;
-        }
-
-        if (isFirstLaunchAfterUpgrade()) {
-            SwingUtils.showInfoDialog(i18n("fatal.migration_requires_manual_reboot"));
-            return true;
-        }
-
-        return false;
+        // Never apply an upstream launcher payload, including legacy command-line requests.
+        return args.length > 0 && args[0].equals("--apply-to");
     }
 
     public static void updateFrom(RemoteVersion version) {
-        checkFxUserThread();
-
-        if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS && !OperatingSystem.isWindows7OrLater()) {
-            Controllers.dialog(i18n("fatal.apply_update_need_win7", Metadata.PUBLISH_URL), i18n("message.error"), MessageType.ERROR);
-            return;
-        }
-
-        Controllers.dialog(new UpgradeDialog(version, () -> {
-            Path downloaded;
-            try {
-                downloaded = Files.createTempFile("hmcl-update-", ".jar");
-            } catch (IOException e) {
-                LOG.warning("Failed to create temp file", e);
-                return;
-            }
-
-            Task<?> task = new HMCLDownloadTask(version, downloaded);
-
-            TaskExecutor executor = task.executor();
-            Controllers.taskDialog(executor, i18n("message.downloading"), TaskCancellationAction.NORMAL);
-            thread(() -> {
-                boolean success = executor.test();
-
-                if (success) {
-                    try {
-                        if (!IntegrityChecker.isSelfVerified() && !IntegrityChecker.DISABLE_SELF_INTEGRITY_CHECK) {
-                            throw new IOException("Current JAR is not verified");
-                        }
-
-                        var latch = new CountDownLatch(1);
-                        Platform.runLater(() -> {
-                            try {
-                                SettingsManager.savePendingChanges();
-                            } finally {
-                                latch.countDown();
-                            }
-                        });
-
-                        try {
-                            latch.await();
-                        } catch (InterruptedException ignored) {
-                            // Ignore
-                        }
-
-                        try {
-                            FileSaver.waitForAllSaves();
-                        } catch (InterruptedException ignored) {
-                            // Ignore
-                        }
-
-                        requestUpdate(downloaded, getCurrentLocation());
-                        EntryPoint.exit(0);
-                    } catch (IOException e) {
-                        LOG.warning("Failed to update to " + version, e);
-                        Platform.runLater(() -> Controllers.dialog(StringUtils.getStackTrace(e), i18n("update.failed"), MessageType.ERROR));
-                    }
-
-                } else {
-                    Exception e = executor.getException();
-                    LOG.warning("Failed to update to " + version, e);
-                    if (!(e instanceof CancellationException)) {
-                        Platform.runLater(() -> Controllers.dialog(e.toString(), i18n("update.failed"), MessageType.ERROR));
-                    }
-                }
-            });
-        }));
+        // Upstream HMCL releases must never replace this independent distribution.
     }
 
     private static void applyUpdate(Path target) throws IOException {

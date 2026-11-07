@@ -77,3 +77,21 @@ language-subtag-registry
 !/.gemini/config.yaml
 .codex
 /.gradle-*/
+
+# ØchreCL local accounts, worlds, tools, caches and packaging outputs
+**/.hmcl/
+**/.minecraft/
+.env
+.env.*
+*.p12
+*.pfx
+*.pem
+*.key
+/builds/
+/backups/
+/test-data/
+/preview-data/
+/windows-test/
+/windows-cache/
+/release-work/
+/.gradle-home/

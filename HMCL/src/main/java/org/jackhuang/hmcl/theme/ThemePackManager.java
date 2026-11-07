@@ -1556,11 +1556,19 @@ public final class ThemePackManager {
         return Math.max(0.0, Math.min(1.0, opacity));
     }
 
-    /// Returns the effective custom launcher background opacity, or the built-in default when not overridden.
+    /// Preserves the selected theme's opacity when only the background source is overridden.
     private static double currentBackgroundOpacityOrDefault() {
-        return SettingsManager.settings().getThemeAppearanceOverrides().contains(LauncherSettings.THEME_APPEARANCE_BACKGROUND_OPACITY)
-                ? currentBackgroundOpacity()
-                : 1.0;
+        if (settings().getThemeAppearanceOverrides().contains(LauncherSettings.THEME_APPEARANCE_BACKGROUND_OPACITY)) {
+            return currentBackgroundOpacity();
+        }
+        try {
+            @Nullable ResolvedBackground inherited = resolveThemeBackground(
+                    settings().getSelectedThemeOrDefault(), currentResolveContext());
+            return inherited != null ? inherited.opacity() : 1.0;
+        } catch (IOException | RuntimeException e) {
+            LOG.warning("Couldn't resolve inherited background opacity", e);
+            return 1.0;
+        }
     }
 
     /// Returns the currently selected built-in wallpaper ID.

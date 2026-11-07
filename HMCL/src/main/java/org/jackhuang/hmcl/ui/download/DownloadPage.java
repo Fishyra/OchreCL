@@ -79,6 +79,10 @@ public class DownloadPage extends DecoratorAnimatedPage implements DecoratorPage
     private final TabItem<DownloadListPage> shaderTab;
     /// The tab for browsing downloadable worlds.
     private final TabItem<DownloadListPage> worldTab;
+    /// Server core and server-side add-on download workspace.
+    private final TabItem<org.jackhuang.hmcl.server.ServerDownloadPage> serverTab = new TabItem<>(org.jackhuang.hmcl.server.ServerDownloadPage::new);
+    /// Separate server-scoped plugin and mod browser.
+    private final TabItem<org.jackhuang.hmcl.server.ServerAddonsPage> serverAddonsTab = new TabItem<>(org.jackhuang.hmcl.server.ServerAddonsPage::new);
     private final TransitionPane transitionPane = new TransitionPane();
     private final DownloadNavigator versionPageNavigator = new DownloadNavigator();
 
@@ -117,7 +121,9 @@ public class DownloadPage extends DecoratorAnimatedPage implements DecoratorPage
                 modTab,
                 resourcePackTab,
                 shaderTab,
-                worldTab
+                worldTab,
+                serverTab,
+                serverAddonsTab
         );
 
         GameDirectoryManager.registerVersionsListener(this::loadVersions);
@@ -128,7 +134,9 @@ public class DownloadPage extends DecoratorAnimatedPage implements DecoratorPage
                 .startCategory(i18n("download.game").toUpperCase(Locale.ROOT))
                 .addNavigationDrawerTab(tabController, newGameTab, i18n("game"), SVG.STADIA_CONTROLLER, SVG.STADIA_CONTROLLER_FILL)
                 .addNavigationDrawerTab(tabController, modpackTab, i18n("modpack"), SVG.PACKAGE2, SVG.PACKAGE2_FILL)
+                .addNavigationDrawerTab(tabController, serverTab, "服务器", SVG.OCHRE_SERVER)
                 .startCategory(i18n("download.content").toUpperCase(Locale.ROOT))
+                .addNavigationDrawerTab(tabController, serverAddonsTab, "服务器附加项", SVG.OCHRE_PLUG)
                 .addNavigationDrawerTab(tabController, modTab, i18n("mods"), SVG.EXTENSION, SVG.EXTENSION_FILL)
                 .addNavigationDrawerTab(tabController, resourcePackTab, i18n("resourcepack"), SVG.TEXTURE)
                 .addNavigationDrawerTab(tabController, shaderTab, i18n("download.shader"), SVG.WB_SUNNY, SVG.WB_SUNNY_FILL)
@@ -138,6 +146,12 @@ public class DownloadPage extends DecoratorAnimatedPage implements DecoratorPage
 
         setCenter(transitionPane);
     }
+
+    /// Selects the independent server add-on browser from maintenance shortcuts.
+    public void showServerAddons() { tabController.selectTab(serverAddonsTab); }
+
+    /// Selects server downloads from the dashboard shortcut.
+    public void showServerDownloads() { tabController.selectTab(serverTab); }
 
     private static TabItem<DownloadListPage> newDownloadListTab(Supplier<DownloadListPage> pageSupplier) {
         return new TabItem<>(() -> {

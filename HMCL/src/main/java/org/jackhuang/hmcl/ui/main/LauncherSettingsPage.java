@@ -64,21 +64,31 @@ public class LauncherSettingsPage extends DecoratorAnimatedPage implements Decor
         tabController.selectTab(gameTab);
         addEventHandler(Navigator.NavigationEvent.NAVIGATED, event -> gameTab.getNode().loadInstance(HMCLGameInstance.Optional.empty(GameDirectoryManager.getSelectedRepository())));
 
-        AdvancedListBox sideBar = new AdvancedListBox()
-                .addNavigationDrawerTab(tabController, gameTab, i18n("settings.type.global.manage"), SVG.STADIA_CONTROLLER, SVG.STADIA_CONTROLLER_FILL)
-                .addNavigationDrawerTab(tabController, javaManagementTab, i18n("java.management"), SVG.LOCAL_CAFE, SVG.LOCAL_CAFE_FILL)
-                .startCategory(i18n("launcher").toUpperCase(Locale.ROOT))
-                .addNavigationDrawerTab(tabController, settingsTab, i18n("settings.launcher.general"), SVG.TUNE)
-                .addNavigationDrawerTab(tabController, personalizationTab, i18n("settings.launcher.appearance"), SVG.STYLE, SVG.STYLE_FILL)
-                .addNavigationDrawerTab(tabController, downloadTab, i18n("download"), SVG.DOWNLOAD)
-                .startCategory(i18n("help").toUpperCase(Locale.ROOT))
-                .addNavigationDrawerTab(tabController, helpTab, i18n("help"), SVG.HELP, SVG.HELP_FILL)
-                .addNavigationDrawerTab(tabController, feedbackTab, i18n("contact"), SVG.FEEDBACK, SVG.FEEDBACK_FILL)
-                .addNavigationDrawerTab(tabController, aboutTab, i18n("about"), SVG.INFO, SVG.INFO_FILL);
-        FXUtils.setLimitWidth(sideBar, 200);
-        setLeft(sideBar);
+        javafx.scene.layout.FlowPane tabs = new javafx.scene.layout.FlowPane(8, 8);
+        tabs.getStyleClass().add("ochre-section-tabs");
+        addSection(tabs, gameTab, i18n("settings.type.global.manage"));
+        addSection(tabs, javaManagementTab, i18n("java.management"));
+        addSection(tabs, settingsTab, i18n("settings.launcher.general"));
+        addSection(tabs, personalizationTab, i18n("settings.launcher.appearance"));
+        addSection(tabs, downloadTab, i18n("download"));
+        getLeft().setVisible(false);
+        getLeft().setManaged(false);
+        javafx.scene.layout.VBox content = new javafx.scene.layout.VBox(12, tabs, transitionPane);
+        content.getStyleClass().add("ochre-settings-content");
+        javafx.scene.layout.VBox.setVgrow(transitionPane, javafx.scene.layout.Priority.ALWAYS);
+        setCenter(content);
+    }
 
-        setCenter(transitionPane);
+    /// Keeps compact wrapping section buttons synchronized with the existing page controller.
+    private void addSection(javafx.scene.layout.FlowPane tabs, TabItem<?> tab, String title) {
+        com.jfoenix.controls.JFXButton button = new com.jfoenix.controls.JFXButton(title);
+        button.getStyleClass().add("ochre-section-tab");
+        javafx.css.PseudoClass selected = javafx.css.PseudoClass.getPseudoClass("selected");
+        button.pseudoClassStateChanged(selected, tabController.selectedTabProperty().get() == tab);
+        tabController.selectedTabProperty().addListener((observable, oldValue, value) ->
+                button.pseudoClassStateChanged(selected, value == tab));
+        button.setOnAction(event -> tabController.selectTab(tab));
+        tabs.getChildren().add(button);
     }
 
     @Override
@@ -94,6 +104,11 @@ public class LauncherSettingsPage extends DecoratorAnimatedPage implements Decor
     public void showGameSettings(HMCLGameRepository repository) {
         gameTab.getNode().loadInstance(HMCLGameInstance.Optional.empty(repository));
         tabController.selectTab(gameTab, false);
+    }
+
+    /// Selects the upstream about page, preserving all original attribution and license information.
+    public void showAbout() {
+        tabController.selectTab(aboutTab, false);
     }
 
     public void showFeedback() {

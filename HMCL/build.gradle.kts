@@ -61,6 +61,7 @@ dependencies {
     implementation(project(":HMCLCore"))
     implementation(project(":HMCLBoot"))
     implementation("libs:JFoenix")
+    implementation("libs:bcprov-jdk18on-1.85")
     implementation(libs.jwebp)
     implementation(libs.fxsvgimage)
     implementation(libs.java.info)
@@ -194,6 +195,7 @@ tasks.shadowJar {
 
     exclude("**/package-info.class")
     exclude("META-INF/maven/**")
+    exclude("META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA")
 
     exclude("META-INF/services/javax.imageio.spi.ImageReaderSpi")
     exclude("META-INF/services/javax.imageio.spi.ImageInputStreamSpi")

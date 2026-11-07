@@ -82,10 +82,10 @@ import static org.jackhuang.hmcl.ui.FXUtils.onEscPressed;
 @NotNullByDefault
 public final class Decorator {
     /// The minimum width, in pixels, of the visible window content.
-    private static final double MIN_CONTENT_WIDTH = 800.0;
+    private static final double MIN_CONTENT_WIDTH = 720.0;
 
-    /// The minimum height, in pixels, including the 450-pixel background and 40-pixel title bar.
-    private static final double MIN_CONTENT_HEIGHT = 450.0 + 40.0;
+    /// Minimum height that keeps the desktop navigation and launch action accessible.
+    private static final double MIN_CONTENT_HEIGHT = 460.0;
 
     /// The minimum visible overlap, in pixels, used to accept a persisted window position.
     private static final double MIN_VISIBLE_WINDOW_AREA = 20.0;
@@ -242,6 +242,8 @@ public final class Decorator {
         navigator.setOnNavigated(this::onNavigated);
 
         mainWindowPane = new MainWindowPane(this);
+        // Let the frame shrink to the real scene instead of centering an oversized minimum-height child.
+        root.setMinSize(0, 0); shadowContainer.setMinSize(0, 0);
         shadowContainer.getChildren().setAll(mainWindowPane);
         root.setCacheHint(CacheHint.SCALE);
         root.setPickOnBounds(true);
@@ -370,11 +372,11 @@ public final class Decorator {
         DialogUtils.showLater(this, node);
     }
 
-    /// Shows a transient message at the bottom center of the main window.
+    /// Shows an animated, categorized message at the top right of the main window.
     ///
     /// @param content the message to show
     public void showToast(String content) {
-        snackbar.fireEvent(new JFXSnackbar.SnackbarEvent(new JFXSnackbarLayout(content)));
+        org.jackhuang.hmcl.server.ServerManager.notice(content);
     }
 
     /// Starts a wizard without an explicit category title.

@@ -43,7 +43,7 @@ public final class UpdateChecker {
     private static final ReadOnlyObjectWrapper<@Nullable Throwable> error = new ReadOnlyObjectWrapper<>();
 
     public static void init() {
-        requestCheckUpdate(UpdateChannel.getChannel(), settings().acceptPreviewUpdateProperty().get());
+        // This independent distribution never queries upstream launcher releases.
     }
 
     public static RemoteVersion getLatestVersion() {
@@ -93,35 +93,6 @@ public final class UpdateChecker {
     }
 
     public static void requestCheckUpdate(UpdateChannel channel, boolean preview) {
-        Platform.runLater(() -> {
-            if (isCheckingUpdate())
-                return;
-            checkingUpdate.set(true);
-
-            thread(() -> {
-                RemoteVersion result = null;
-                Throwable t = null;
-                try {
-                    result = checkUpdate(channel, preview);
-                    LOG.info("Latest version (" + channel + ", preview=" + preview + ") is " + result);
-                } catch (Throwable e) {
-                    t = e;
-                    LOG.warning("Failed to check for update", e);
-                }
-                Throwable throwable = t;
-
-                RemoteVersion finalResult = result;
-                Platform.runLater(() -> {
-                    if (throwable != null) {
-                        latestVersion.set(null);
-                        error.set(throwable);
-                    } else {
-                        error.set(null);
-                        latestVersion.set(finalResult);
-                    }
-                    checkingUpdate.set(false);
-                });
-            }, "Update Checker", true);
-        });
+        // Retained for compatibility with older UI integrations; self updates are disabled.
     }
 }

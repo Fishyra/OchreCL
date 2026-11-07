@@ -1,0 +1,177 @@
+/* SPDX-FileCopyrightText: Copyright (C) 2026 The HMCL Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later WITH AdditionRef-HMCL */
+/* Geometry belongs here; every surface and foreground follows the resolved theme. */
+.jfx-button, .jfx-toggle-node { -fx-background-radius: 11; -fx-border-radius: 11; }
+.card, .card-no-padding, .card-non-transparent { -fx-background-radius: 15; -fx-effect: null; }
+.jfx-dialog-layout { -fx-background-color: -ochre-card; -fx-background-radius: 20; -fx-text-fill: -ochre-ink; }
+.context-menu, .combo-box-popup > .list-view { -fx-background-radius: 12; -fx-border-radius: 12; }
+.hint, .installer-item-wrapper { -fx-background-radius: 12; -fx-border-radius: 12; }
+.launch-pane > .jfx-button.launch-button { -fx-background-radius: 16 0 0 16; }
+.launch-pane > .jfx-button.menu-button { -fx-background-radius: 0 16 16 0; }
+.ochre-shell { -fx-padding: 0 6 8 0; }
+.ochre-brand { -fx-font-size: 19px; -fx-font-weight: bold; -fx-text-fill: -ochre-ink; }
+.ochre-rail { -fx-padding: 8 4; -fx-background-color: -ochre-rail; -fx-background-radius: 16; }
+.ochre-rail > .jfx-button { -fx-padding: 10 9; -fx-min-height: 42; -fx-background-radius: 11; -fx-alignment: center-left; }
+.ochre-rail > .jfx-button:hover { -fx-background-color: -ochre-selected; }
+.ochre-rail .label { -fx-font-size: 12px; -fx-text-fill: -ochre-ink; }
+.ochre-rail .svg { -fx-fill: -ochre-ink; }
+.ochre-pages { -fx-padding: 8 10; }
+.ochre-content-panel { -fx-background-color: -ochre-panel; -fx-background-radius: 18; }
+.ochre-home-canvas, .ochre-home { -fx-background-color: transparent; }
+.ochre-inspector { -fx-padding: 12; -fx-background-color: -ochre-inspector; -fx-background-radius: 18; }
+.ochre-cover { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 14; -fx-cursor: hand; }
+.ochre-cover:focused { -fx-border-color: -monet-primary; -fx-border-radius: 14; }
+.ochre-instance-title { -fx-font-size: 21px; -fx-padding: 5 2 0 2; -fx-text-fill: -ochre-ink; }
+.ochre-runtime { -fx-font-size: 12px; -fx-padding: 15 0 8 0; -fx-text-fill: -ochre-muted-ink; }
+.ochre-instance-details { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 10; -fx-padding: 10; }
+.ochre-launch-wide { -fx-background-color: -ochre-action; -fx-text-fill: -ochre-action-ink; -fx-min-height: 50; -fx-background-radius: 14; -fx-font-size: 16px; }
+.ochre-launch-circle { -fx-background-color: -ochre-action; -fx-min-width: 56; -fx-max-width: 56; -fx-min-height: 56; -fx-max-height: 56; -fx-background-radius: 28; }
+.ochre-launch-circle .svg { -fx-fill: -ochre-action-ink; }
+.ochre-launch-dialog { -fx-background-color: -ochre-panel; -fx-background-radius: 20; }
+.ochre-launch-progress, .ochre-launch-logs { -fx-background-color: -ochre-card; -fx-background-radius: 14; }
+.ochre-live-log { -fx-font-family: "Menlo", "Consolas", monospace; -fx-font-size: 11px; -fx-background-radius: 10; -fx-background-color: -ochre-log; -fx-text-fill: -ochre-ink; -fx-highlight-fill: -ochre-selected; -fx-highlight-text-fill: -ochre-selected-ink; }
+.ochre-live-log .content { -fx-background-color: -ochre-log; -fx-background-radius: 10; }
+.ochre-instance-tag { -fx-background-color: -ochre-selected; -fx-background-radius: 7; -fx-padding: 4 7; -fx-font-size: 11px; -fx-text-fill: -ochre-selected-ink; }
+.ochre-inspector-scroll, .ochre-inspector-scroll > .viewport { -fx-background-color: transparent; }
+.ochre-inspector-scroll { -fx-padding: 0; -fx-background-insets: 0; }
+.ochre-shell .class-title { -fx-background-color: transparent; -fx-padding: 9 4 5; }
+.ochre-shell .class-title Rectangle { -fx-opacity: 0; }
+.ochre-shell .advanced-list-box-content { -fx-spacing: 7; }
+.ochre-shell .navigation-drawer-item { -fx-background-radius: 11; }
+.ochre-shell .advanced-list-item > .rippler-container { -fx-background-radius: 11; }
+.ochre-shell .options-list-item { -fx-border-width: 0; -fx-background-radius: 12; -fx-background-insets: 3 0; }
+.ochre-shell .md-list-cell { -fx-border-width: 0; -fx-background-radius: 12; -fx-background-insets: 2 0; }
+.ochre-shell .gray-background, .ochre-shell .content-background { -fx-background-color: transparent; }
+.ochre-shell .card, .ochre-shell .card-no-padding, .ochre-shell .options-sublist { -fx-background-color: -ochre-card; }
+.ochre-page-viewport, .ochre-page-viewport > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
+.ochre-shell:compact .ochre-rail { -fx-spacing: 2; -fx-padding: 5 4; }
+.ochre-shell:compact .ochre-rail > .jfx-button { -fx-min-height: 34; -fx-pref-height: 34; -fx-padding: 6 9; }
+.ochre-section-tabs { -fx-padding: 12; -fx-hgap: 7; -fx-vgap: 7; -fx-background-color: -ochre-muted-surface; -fx-background-radius: 14; }
+.ochre-section-tab { -fx-padding: 8 13; -fx-background-radius: 10; -fx-text-fill: -ochre-muted-ink; }
+.ochre-section-tab:selected { -fx-background-color: -ochre-selected; -fx-text-fill: -ochre-selected-ink; }
+.ochre-section-tab:selected .svg { -fx-fill: -ochre-selected-ink; }
+.ochre-settings-content { -fx-padding: 14; -fx-spacing: 14; }
+.ochre-account-methods { -fx-padding: 14; -fx-background-color: -ochre-muted-surface; -fx-background-radius: 14; }
+.ochre-account-page .card-list { -fx-spacing: 12; -fx-padding: 16; }
+.ochre-account-page .card { -fx-background-color: -ochre-card; }
+.ochre-download-page .advanced-list-box-content { -fx-padding: 12; -fx-background-color: -ochre-muted-surface; -fx-background-radius: 14; }
+
+/* Shared game/server workspace; all surfaces follow the resolved appearance. */
+.ochre-runtime-panel, .ochre-server-controls {
+    -fx-background-color: -ochre-card;
+    -fx-background-radius: 20;
+}
+.ochre-runtime-console {
+    -fx-font-family: monospace;
+    -fx-background-color: -ochre-log;
+    -fx-text-fill: -ochre-ink;
+    -fx-background-radius: 14;
+}
+.ochre-runtime-console .content { -fx-background-color: -ochre-log; -fx-background-radius: 14; }
+.ochre-runtime-metrics { -fx-padding: 14; -fx-background-color: -ochre-muted-surface; -fx-background-radius: 16; }
+.ochre-runtime-notification {
+    -fx-background-color: -ochre-selected;
+    -fx-text-fill: -ochre-selected-ink;
+    -fx-padding: 16;
+    -fx-background-radius: 16;
+}
+.ochre-server-page .split-pane { -fx-background-color: transparent; -fx-padding: 0; }
+.ochre-server-page .split-pane-divider { -fx-background-color: transparent; -fx-padding: 5; }
+.ochre-server-download .list-view { -fx-background-radius: 18; -fx-padding: 8; }
+.ochre-crash-dialog { -fx-background-color: -ochre-panel; -fx-background-radius: 24; -fx-padding: 0; }
+.ochre-crash-dialog .text { -fx-fill: -ochre-ink; }
+.ochre-crash-dialog .scroll-pane, .ochre-crash-dialog .scroll-pane > .viewport { -fx-background-color: transparent; }
+/* New desktop workspaces use the same controls and product surfaces as the shell. */
+.ochre-server-page .jfx-combo-box, .ochre-server-download .jfx-combo-box,
+.ochre-server-page .jfx-text-field, .ochre-server-download .jfx-text-field {
+    -fx-background-color: -ochre-muted-surface;
+    -fx-background-radius: 12;
+    -fx-padding: 12;
+    -fx-text-fill: -ochre-ink;
+    -fx-prompt-text-fill: -ochre-muted-ink;
+    -jfx-unfocus-color: transparent;
+    -jfx-focus-color: -monet-primary;
+}
+.ochre-server-page .jfx-combo-box .list-cell, .ochre-server-download .jfx-combo-box .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -ochre-ink;
+}
+.ochre-server-page .jfx-button, .ochre-server-download .jfx-button { -fx-padding: 10 14; -fx-background-radius: 12; }
+.ochre-primary-action { -fx-background-color: -ochre-action; -fx-text-fill: -ochre-action-ink; }
+.ochre-server-download .jfx-list-view {
+    -fx-background-color: -ochre-card;
+    -fx-control-inner-background: -ochre-card;
+    -fx-background-radius: 18;
+    -fx-padding: 10;
+}
+.ochre-server-download .jfx-list-cell {
+    -fx-background-color: -ochre-muted-surface;
+    -fx-background-radius: 12;
+    -fx-padding: 12;
+    -fx-text-fill: -ochre-ink;
+}
+.ochre-server-download .jfx-list-cell:selected { -fx-background-color: -ochre-selected; -fx-text-fill: -ochre-selected-ink; }
+.ochre-server-download .jfx-list-cell:empty { -fx-background-color: transparent; }
+.ochre-server-page .scroll-pane, .ochre-server-page .scroll-pane > .viewport { -fx-background-color: transparent; }
+/* Resource dashboard uses measured values and lightweight, theme-aware vector histories. */
+.ochre-metric-card { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 16; -fx-padding: 12; }
+.ochre-metric-heading, .ochre-metric-detail { -fx-text-fill: -ochre-muted-ink; -fx-font-size: 11px; }
+.ochre-metric-value { -fx-text-fill: -ochre-ink; -fx-font-size: 20px; }
+.ochre-metric-line { -fx-fill: transparent; -fx-stroke: -monet-primary; -fx-stroke-width: 1.7; }
+.ochre-metric-baseline { -fx-stroke: -ochre-muted-ink; -fx-opacity: .18; -fx-stroke-width: 1; }
+.ochre-server-recovery { -fx-background-color: -ochre-panel; -fx-background-radius: 20; }
+.ochre-server-recovery .jfx-combo-box { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 12; -fx-padding: 12; }
+.ochre-metric-point { -fx-fill: -monet-primary; }
+.ochre-resource-scroll, .ochre-resource-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
+.ochre-runtime-notification .svg { -fx-fill: -ochre-selected-ink; }
+.ochre-runtime-notification:error { -fx-background-color: -monet-error-container; -fx-text-fill: -monet-on-error-container; }
+.ochre-runtime-notification:error .svg { -fx-fill: -monet-on-error-container; }
+
+/* Explicit foregrounds keep flat JavaFX buttons readable in both appearance modes. */
+.ochre-shell .jfx-button, .jfx-dialog-layout .jfx-button { -fx-text-fill: -ochre-ink; }
+.ochre-shell .ochre-primary-action, .ochre-shell .ochre-launch-wide,
+.jfx-dialog-layout .ochre-primary-action { -fx-text-fill: -ochre-action-ink; }
+.ochre-server-functions .jfx-button { -fx-alignment: center-left; -fx-background-color: -ochre-muted-surface; }
+.ochre-server-page .titled-pane > .title, .ochre-server-download .titled-pane > .title { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 12; -fx-text-fill: -ochre-ink; -fx-padding: 12; }
+.ochre-server-page .titled-pane > .content, .ochre-server-download .titled-pane > .content { -fx-background-color: -ochre-card; -fx-background-radius: 12; -fx-border-width: 0; -fx-padding: 10; }
+.ochre-server-page .titled-pane, .ochre-server-download .titled-pane { -fx-text-fill: -ochre-ink; }
+.ochre-server-download .scroll-pane, .ochre-server-download .scroll-pane > .viewport { -fx-background-color: transparent; }
+
+/* The provider selector and community query share a single visual height and center line. */
+.ochre-core-toolbar .ochre-core-selector { -fx-padding: 8 10; }
+.ochre-core-toolbar .ochre-core-selector > .list-cell { -fx-padding: 0 4; }
+.ochre-core-toolbar .ochre-core-query { -fx-padding: 8 12; }
+
+/* Fixed power controls and independently scrolling functions share the server side column. */
+.ochre-server-function-scroll, .ochre-server-function-scroll > .viewport,
+.ochre-service-scroll, .ochre-service-scroll > .viewport { -fx-background-color: transparent; -fx-padding: 0; -fx-background-insets: 0; }
+.ochre-service-dialog { -fx-background-color: -ochre-card; -fx-background-radius: 20; }
+.ochre-service-footer { -fx-background-color: -ochre-card; }
+
+.ochre-core-card {
+    -fx-background-color: -ochre-muted-surface;
+    -fx-background-radius: 18;
+}
+.ochre-core-card:hover, .ochre-core-card:focused { -fx-background-color: -ochre-selected; }
+.ochre-core-artwork { -fx-background-color: -ochre-card; -fx-background-radius: 14; }
+.ochre-core-source { -fx-background-color: -ochre-card; -fx-background-radius: 7; -fx-padding: 4 8; -fx-font-size: 11px; }
+.ochre-deployment-footer { -fx-background-radius: 0 0 18 18; }
+.ochre-deployment-form, .ochre-deployment-form > .viewport { -fx-background-color: transparent; -fx-padding: 0; }
+
+/* Deployment uses two separate rounded surfaces with a quiet, draggable gutter. */
+.ochre-deployment-split { -fx-background-color: transparent; -fx-border-width: 0; -fx-background-insets: 0; -fx-padding: 0; }
+.ochre-deployment-split > .split-pane-divider { -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 0 6; }
+.ochre-deployment-split > .split-pane-divider > .vertical-grabber,
+.ochre-deployment-split > .split-pane-divider > .horizontal-grabber { -fx-background-color: transparent; -fx-shape: null; }
+.ochre-deployment-panel { -fx-background-color: -ochre-card; -fx-background-radius: 20; }
+.ochre-deployment-builds { -fx-background-color: transparent; -fx-border-width: 0; -fx-background-insets: 0; }
+
+/* Core identity remains distinct from its smaller server classification badge. */
+.ochre-core-server-badge { -fx-background-color: -ochre-card; -fx-background-radius: 7; -fx-border-color: -ochre-muted-surface; -fx-border-radius: 7; -fx-border-width: 1; }
+.ochre-core-server-badge .svg { -fx-fill: -ochre-ink; }
+.ochre-paper-glyph { -fx-fill: -ochre-card; -fx-stroke: -ochre-ink; -fx-stroke-width: 1.7; -fx-stroke-line-join: round; }
+
+/* Fixed-height add-on filters must reserve room for the selected cell's full text line. */
+.ochre-addon-filters .jfx-combo-box { -fx-padding: 4 12; }
+.ochre-addon-filters .jfx-combo-box > .list-cell { -fx-padding: 0 4; -fx-alignment: center-left; }
+.ochre-addon-filters .jfx-text-field { -fx-padding: 8 12; }

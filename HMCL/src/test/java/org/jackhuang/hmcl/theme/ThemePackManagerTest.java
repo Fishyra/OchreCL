@@ -7,6 +7,7 @@ import org.jackhuang.hmcl.setting.LauncherSettings;
 import org.jackhuang.hmcl.setting.SettingsManager;
 import org.jackhuang.hmcl.util.io.FileUtils;
 import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
@@ -30,6 +31,37 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 /// Tests for theme-pack import, export, and resolution behavior.
 @NotNullByDefault
 public final class ThemePackManagerTest {
+    /// Changing a background source retains theme transparency until opacity is explicitly overridden.
+    @Test
+    public void customBackgroundRetainsThemeOpacity() throws Exception {
+        Field settingsField = SettingsManager.class.getDeclaredField("launcherSettings");
+        settingsField.setAccessible(true);
+        @Nullable Object previousSettings = settingsField.get(null);
+        try {
+            LauncherSettings launcherSettings = new LauncherSettings();
+            settingsField.set(null, launcherSettings);
+            double inheritedOpacity = ThemePackManager.resolveCurrentBackground(
+                    ThemePackManager.currentResolveContext()).opacity();
+            org.junit.jupiter.api.Assertions.assertTrue(inheritedOpacity < 1.0);
+
+            launcherSettings.backgroundTypeProperty().set(BackgroundType.PAINT);
+            launcherSettings.customBackgroundPaintProperty().set(javafx.scene.paint.Color.BEIGE);
+            launcherSettings.getThemeAppearanceOverrides().add(LauncherSettings.THEME_APPEARANCE_BACKGROUND);
+            assertEquals(inheritedOpacity, ThemePackManager.resolveCurrentBackground(
+                    ThemePackManager.currentResolveContext()).opacity());
+
+            launcherSettings.backgroundOpacityProperty().set(0.65);
+            launcherSettings.getThemeAppearanceOverrides().add(LauncherSettings.THEME_APPEARANCE_BACKGROUND_OPACITY);
+            assertEquals(0.65, ThemePackManager.resolveCurrentBackground(
+                    ThemePackManager.currentResolveContext()).opacity());
+            launcherSettings.getThemeAppearanceOverrides().remove(LauncherSettings.THEME_APPEARANCE_BACKGROUND_OPACITY);
+            assertEquals(inheritedOpacity, ThemePackManager.resolveCurrentBackground(
+                    ThemePackManager.currentResolveContext()).opacity());
+        } finally {
+            settingsField.set(null, previousSettings);
+        }
+    }
+
     /// Theme-pack image assets keep their entry names when exported from unpacked theme directories.
     @Test
     public void exportsUnpackedThemeResourceWithEntryName() throws Exception {

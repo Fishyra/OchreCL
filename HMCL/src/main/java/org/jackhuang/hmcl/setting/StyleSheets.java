@@ -10,7 +10,7 @@ import javafx.scene.paint.Color;
 import org.glavo.monetfx.Brightness;
 import org.glavo.monetfx.ColorRole;
 import org.glavo.monetfx.ColorScheme;
-import org.jackhuang.hmcl.theme.ResolvedTheme;
+import org.jackhuang.hmcl.theme.OchrePalette;
 import org.jackhuang.hmcl.theme.ThemeColor;
 import org.jackhuang.hmcl.theme.Themes;
 
@@ -34,7 +34,8 @@ public final class StyleSheets {
                 getFontStyleSheet(),
                 getThemeStyleSheet(),
                 getBrightnessStyleSheet(),
-                "/assets/css/root.css"
+                "/assets/css/root.css",
+                "/assets/css/ochre.css"
         };
         stylesheets = FXCollections.observableList(Arrays.asList(array));
 
@@ -122,11 +123,6 @@ public final class StyleSheets {
     }
 
     private static String getThemeStyleSheet() {
-        final String blueCss = "/assets/css/blue.css";
-
-        if (ResolvedTheme.DEFAULT.equals(Themes.getTheme()))
-            return blueCss;
-
         ColorScheme scheme = Themes.getColorScheme();
 
         StringBuilder builder = new StringBuilder();
@@ -147,6 +143,7 @@ public final class StyleSheets {
         addColor(builder, scheme, ColorRole.SECONDARY_CONTAINER, 0.8);
         addColor(builder, scheme, ColorRole.INVERSE_SURFACE, 0.8);
 
+        OchrePalette.appendCss(builder, scheme);
         builder.append("}\n");
         return toStyleSheetUri(builder.toString());
     }

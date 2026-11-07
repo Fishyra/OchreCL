@@ -1,0 +1,58 @@
+{
+  "runtime": {
+    "name": "zulu17.70.113-ca-jre17.0.21.0.3-win_x64.zip",
+    "url": "https://cdn.azul.com/zulu/bin/zulu17.70.113-ca-jre17.0.21.0.3-win_x64.zip",
+    "sha256": "c5a32fe9b1d2ff07ac4991b57a72d707ad97d54a9cc1bd2f8f005bfd1498d460"
+  },
+  "packager": {
+    "name": "zulu17.70.113-ca-fx-jdk17.0.21.0.3-win_x64.zip",
+    "url": "https://cdn.azul.com/zulu/bin/zulu17.70.113-ca-fx-jdk17.0.21.0.3-win_x64.zip",
+    "sha256": "46ab82c913bbf1afc949e7c4cfa5a24f42dabcca7dbdc2d6c08de11ca01e85e8"
+  },
+  "javafx": [
+    {
+      "name": "javafx-base-21.0.8-win.jar",
+      "url": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-base/21.0.8/javafx-base-21.0.8-win.jar",
+      "sha256": "b1aecc348fcd904a9869d661eecda9fb0d4d300724a1344bfe074cbf2ba01b3b"
+    },
+    {
+      "name": "javafx-graphics-21.0.8-win.jar",
+      "url": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-graphics/21.0.8/javafx-graphics-21.0.8-win.jar",
+      "sha256": "f32a1bcbeae70cf416b8da7e7c3e6698f18ba09783d7ff77047edf119a044ccd"
+    },
+    {
+      "name": "javafx-controls-21.0.8-win.jar",
+      "url": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-controls/21.0.8/javafx-controls-21.0.8-win.jar",
+      "sha256": "dc1eef3dbdc721c8d42a4084d76c2f48b8b5ba35e5d76fdfce7bb210def621ac"
+    }
+  ],
+  "licenses": [
+    {
+      "name": "LICENSE",
+      "url": "https://raw.githubusercontent.com/openjdk/jfx/jfx21/LICENSE",
+      "sha256": "4b9abebc4338048a7c2dc184e9f800deb349366bdf28eb23c2677a77b4c87726"
+    },
+    {
+      "name": "ASSEMBLY_EXCEPTION",
+      "url": "https://raw.githubusercontent.com/openjdk/jfx/jfx21/ASSEMBLY_EXCEPTION",
+      "sha256": "a44eb7b5caf5534c6ef536b21edb40b4d6babf91bf97d9d45596868618b2c6fb"
+    },
+    {
+      "name": "ADDITIONAL_LICENSE_INFO",
+      "url": "https://raw.githubusercontent.com/openjdk/jfx/jfx21/ADDITIONAL_LICENSE_INFO",
+      "sha256": "a69bce275ba7a3570af6579cb0f55682cd75fedfcd49e0e8e9022270c447c916"
+    }
+  ],
+  "fonts": [
+    {
+      "name": "NotoSansCJKsc-Regular.otf",
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+      "sha256": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b"
+    },
+    {
+      "name": "OFL.txt",
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/LICENSE",
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    }
+  ]
+}

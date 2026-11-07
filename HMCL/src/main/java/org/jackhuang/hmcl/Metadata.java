@@ -19,12 +19,14 @@ public final class Metadata {
     private Metadata() {
     }
 
-    public static final String NAME = "HMCL";
-    public static final String FULL_NAME = "Hello Minecraft! Launcher";
+    /// Short name of the ØchreCL launcher fork.
+    public static final String NAME = "ØchreCL";
+    /// Display name used in application metadata.
+    public static final String FULL_NAME = "ØchreCL（Øchre启动器）";
     public static final String VERSION = System.getProperty("hmcl.version.override", JarUtils.getAttribute("hmcl.version", "@develop@"));
 
     /// Explicit Application User Model ID used for Windows taskbar grouping and pinning.
-    public static final String WINDOWS_APP_USER_MODEL_ID = "org.jackhuang.hmcl";
+    public static final String WINDOWS_APP_USER_MODEL_ID = "io.ochrecl.launcher";
 
     public static final String TITLE = NAME + " " + VERSION;
 
