@@ -53,7 +53,7 @@ public final class ServerWorkspacePage extends BorderPane implements DecoratorPa
         Map<String, TextInputControl> fields = new LinkedHashMap<>(); VBox settings = card("启动配置");
         field(settings, fields, "name", "服务器名称", server.toString()); field(settings, fields, "port", "主端口", server.settings.getProperty("port", "25565")); field(settings, fields, "memory", "最大内存 MiB", server.settings.getProperty("memory", "2048"));
         field(settings, fields, "java", "Java 可执行文件（留空自动选择）", server.settings.getProperty("java", ""));
-        ComboBox<org.jackhuang.hmcl.java.JavaRuntime> detectedJava = new JFXComboBox<>(); detectedJava.setPromptText("选择已检测到的 Java 版本"); detectedJava.setMinWidth(0); detectedJava.setMaxWidth(Double.MAX_VALUE);
+        ComboBox<org.jackhuang.hmcl.java.JavaRuntime> detectedJava = new ComboBox<>(); detectedJava.setPromptText("已检测的 Java · 选择版本"); detectedJava.setMinHeight(40); detectedJava.setPrefHeight(40); detectedJava.setMaxHeight(40); detectedJava.getStyleClass().add("ochre-java-picker"); detectedJava.setMinWidth(0); detectedJava.setMaxWidth(Double.MAX_VALUE);
         detectedJava.setCellFactory(list -> javaCell()); detectedJava.setButtonCell(javaCell());
         @Nullable var runtimes = org.jackhuang.hmcl.java.JavaManager.getAllJavaProperty().get(); if (runtimes != null) detectedJava.getItems().setAll(runtimes);
         javafx.beans.value.ChangeListener<java.util.Collection<org.jackhuang.hmcl.java.JavaRuntime>> runtimeListener = (observable, before, available) -> { if (available != null) detectedJava.getItems().setAll(available); };
@@ -70,7 +70,7 @@ public final class ServerWorkspacePage extends BorderPane implements DecoratorPa
             Properties options = new Properties(); fields.forEach((key, input) -> options.setProperty(key, input.getText().strip())); options.setProperty("restart.enabled", Boolean.toString(restart.isSelected()));
             task("保存实例配置", progress -> { ServerConfiguration.apply(server, options); return "配置已保存"; }, message -> ServerManager.notice(message));
         }));
-        TextArea command = new JFXTextArea(); command.setEditable(false); command.setPrefRowCount(3); command.setText("Java " + server.settings.getProperty("javaMajor", "自动") + "  -Xms256M -Xmx" + server.settings.getProperty("memory", "2048") + "M\n" + server.settings.getProperty("jvm", "") + "\n" + (server.settings.getProperty("args", "").isBlank() ? "-jar " + server.settings.getProperty("jar", "server.jar") : "@" + server.settings.getProperty("args")) + " nogui --port " + server.settings.getProperty("port", "25565"));
+        TextArea command = new JFXTextArea(); command.setWrapText(true); command.setMinWidth(0); command.setEditable(false); command.setPrefRowCount(3); command.setText("Java " + server.settings.getProperty("javaMajor", "自动") + "  -Xms256M -Xmx" + server.settings.getProperty("memory", "2048") + "M\n" + server.settings.getProperty("jvm", "") + "\n" + (server.settings.getProperty("args", "").isBlank() ? "-jar " + server.settings.getProperty("jar", "server.jar") : "@" + server.settings.getProperty("args")) + " nogui --port " + server.settings.getProperty("port", "25565"));
         content.getChildren().addAll(settings, card("启动参数预览", command), action("实例日志", () -> { TextArea log = new JFXTextArea(server.session.log()); log.setEditable(false); log.setPrefRowCount(18); begin("实例日志"); content.getChildren().add(card("本次运行日志", log)); }), action("文件管理 · 打开文件夹", () -> FXUtils.openFolder(server.directory)), action("SFTP 与内网穿透", () -> { begin("SFTP 与内网穿透"); content.getChildren().add(new ServerServicesPane(server)); }), action("重装服务器核心…", () -> {
             Controllers.confirm("将先创建完整快照，再替换当前核心。世界与配置会保留；若需清空世界，请从备份中恢复或创建新服务器。是否继续选择当前版本的核心构建？", "重装核心", () -> {
                 if (server.busy || server.session.isRunning()) { ServerManager.notice("重装前请先停止服务器"); return; }
@@ -236,9 +236,9 @@ public final class ServerWorkspacePage extends BorderPane implements DecoratorPa
     /// Reports operation failures without spawning a native window.
     private static void error(Exception exception) { ServerManager.notice(ServerManager.NoticeKind.ERROR, "操作失败：" + exception.getMessage()); }
     /// Creates a rounded content card with consistent spacing.
-    private static VBox card(String title, Node... children) { VBox box = new VBox(10, new Label(title)); box.setPadding(new Insets(16)); box.getStyleClass().add("ochre-server-controls"); box.getChildren().addAll(children); return box; }
+    private static VBox card(String title, Node... children) { Label caption = new Label(title); caption.setWrapText(true); VBox box = new VBox(10, caption); box.setMinWidth(0); box.setPadding(new Insets(16)); box.getStyleClass().add("ochre-server-controls"); box.getChildren().addAll(children); return box; }
     /// Adds one labelled text setting.
-    private static void field(VBox box, Map<String, TextInputControl> fields, String key, String label, String value) { TextField input = new JFXTextField(value); fields.put(key, input); box.getChildren().addAll(new Label(label), input); }
+    private static void field(VBox box, Map<String, TextInputControl> fields, String key, String label, String value) { TextField input = new JFXTextField(value); input.setMinWidth(0); input.setMaxWidth(Double.MAX_VALUE); fields.put(key, input); box.getChildren().addAll(new Label(label), input); }
     /// Adds a theme-colored operation icon without changing command handling.
     private static JFXButton action(String title, SVG icon, Runnable action) { JFXButton button = action(title, action); button.setGraphic(icon.createIcon(18)); button.setGraphicTextGap(8); return button; }
     /// Creates a standard launcher action button.

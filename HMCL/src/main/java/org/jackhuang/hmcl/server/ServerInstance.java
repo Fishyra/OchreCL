@@ -27,6 +27,7 @@ public final class ServerInstance {
         this.directory = directory;
         settings = new Properties();
         try (var input = Files.newInputStream(directory.resolve("ochre-server.properties"))) { settings.load(input); }
+        session.recover(directory.resolve(".ochre-runtime"));
     }
     /// Saves metadata with an atomic replacement so interrupted saves cannot truncate it.
     public void save() throws IOException {

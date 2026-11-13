@@ -732,6 +732,7 @@ public final class Decorator {
     ///
     /// @param bounds the content bounds in JavaFX screen coordinates
     private void saveContentBounds(Rectangle2D bounds) {
+        if (org.jackhuang.hmcl.server.ServerWindowSizing.hasTemporaryBounds(stage)) return;
         SettingsManager.state().setX(bounds.getMinX() / PRIMARY_SCREEN_BOUNDS.getWidth());
         SettingsManager.state().setY(bounds.getMinY() / PRIMARY_SCREEN_BOUNDS.getHeight());
         SettingsManager.state().setWidth(bounds.getWidth());
@@ -767,6 +768,7 @@ public final class Decorator {
         @Nullable Node focusOwner = previousStage.getScene().getFocusOwner();
 
         Stage replacement = new Stage();
+        org.jackhuang.hmcl.server.ServerWindowSizing.transfer(previousStage, replacement);
         replacement.setTitle(previousStage.getTitle());
         stageInitializer.accept(replacement);
         replacement.getIcons().setAll(previousStage.getIcons());

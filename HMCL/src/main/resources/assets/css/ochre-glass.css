@@ -1,0 +1,17 @@
+/* Glass uses one cached wallpaper blur below controls. Foregrounds stay fully opaque. */
+.jfx-decorator, .ochre-home-canvas, .ochre-pages, .scroll-pane, .scroll-pane > .viewport,
+.list-view, .list-view > .virtual-flow, .tree-view, .tab-pane, .tab-content-area { -fx-background-color: transparent; }
+.ochre-content-panel, .ochre-inspector, .ochre-rail, .card, .card-no-padding, .card-non-transparent,
+.options-list, .options-sublist, .component-list, .ochre-server-controls, .ochre-runtime-panel,
+.jfx-dialog-layout, .task-executor-dialog-layout, .ochre-launch-dialog, .ochre-launch-progress,
+.ochre-launch-logs, .ochre-launch-wide, .ochre-launch-circle, .ochre-task-row,
+.context-menu, .combo-box-popup > .list-view, .menu-item { -fx-background-color: -ochre-card; -fx-background-radius: 16; -fx-border-color: rgba(255,255,255,.25); -fx-border-radius: 16; -fx-border-width: 1; }
+.jfx-button, .button, .jfx-toggle-node, .combo-box-base, .text-field, .text-input,
+.text-area, .text-area > .scroll-pane > .viewport, .text-area .content,
+.titled-pane > .content, .titled-pane > .title, .list-cell:filled, .tree-cell:filled,
+.ochre-instance-tag { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 12; -fx-text-fill: -ochre-ink; }
+.jfx-button:hover, .button:hover, .list-cell:filled:selected, .menu-item:focused { -fx-background-color: -ochre-selected; }
+.ochre-primary-action, .dialog-accept { -fx-background-color: -ochre-action; -fx-text-fill: -ochre-action-ink; }
+.ochre-runtime-console .content { -fx-background-color: -ochre-log; }
+.label, .text, .hyperlink { -fx-opacity: 1; }
+.ochre-wallpaper-credit { -fx-font-size: 9px; -fx-background-color: -ochre-card; -fx-text-fill: -ochre-ink; -fx-background-radius: 6; -fx-padding: 2 8; }

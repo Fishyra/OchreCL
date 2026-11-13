@@ -690,7 +690,15 @@ public class DefaultLauncher extends Launcher {
             if (appdata != null) builder.environment().put("APPDATA", appdata.toString());
 
             builder.environment().putAll(getEnvVars(nativeFolder));
-            process = builder.start();
+            if (listener == null) process = builder.start();
+            else {
+                Path session = Path.of(System.getProperty("ochre.runtime.root", System.getProperty("java.io.tmpdir") + "/ochre-runtime"))
+                    .resolve(java.util.UUID.nameUUIDFromBytes(instance.getInstanceRoot().toAbsolutePath().normalize().toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString());
+                java.nio.file.Files.createDirectories(session);
+                java.nio.file.Files.writeString(session.resolve("instance.path"), instance.getInstanceRoot().toAbsolutePath().normalize().toString());
+                java.nio.file.Files.writeString(session.resolve("run.path"), runDirectory.toAbsolutePath().normalize().toString());
+                process = org.jackhuang.hmcl.util.platform.DurableProcess.start(builder, session);
+            }
         } catch (IOException e) {
             throw new ProcessCreationException(e);
         }

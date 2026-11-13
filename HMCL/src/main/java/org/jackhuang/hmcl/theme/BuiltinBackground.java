@@ -16,13 +16,13 @@ import java.util.Objects;
 @NotNullByDefault
 public enum BuiltinBackground {
     /// Built-in launcher wallpaper from 2021-08-26.
-    WALLPAPER_2021_08_26("2021-08-26", "#3F6AA2"),
+    WALLPAPER_2021_08_26("2021-08-26", "#426271"),
 
     /// Built-in launcher wallpaper from 2016-02-25.
-    WALLPAPER_2016_02_25("2016-02-25", "#354264"),
+    WALLPAPER_2016_02_25("2016-02-25", "#B88435"),
 
     /// Built-in launcher wallpaper from 2015-06-22.
-    WALLPAPER_2015_06_22("2015-06-22", "#FBC578"),
+    WALLPAPER_2015_06_22("2015-06-22", "#397D35"),
     ;
 
     /// Built-in wallpaper used when a wallpaper ID is missing or unsupported.
@@ -63,6 +63,21 @@ public enum BuiltinBackground {
         return id;
     }
 
+    /// Uses descriptive names for the supplied replacement images while preserving saved identifiers.
+    public String displayName() { return switch (this) { case WALLPAPER_2021_08_26 -> "星轨与古堡"; case WALLPAPER_2016_02_25 -> "海岸落日"; case WALLPAPER_2015_06_22 -> "雨林光影"; }; }
+    /// Converts serialized wallpaper IDs to current artwork captions.
+    public static javafx.util.StringConverter<String> converter() { return new javafx.util.StringConverter<>() {
+        /// Displays a descriptive name for a supported built-in image.
+        @Override public String toString(@Nullable String id) { return fromIdOrFallback(id).displayName(); }
+        /// Selectors are non-editable; typed values are not interpreted as filenames.
+        @Override public String fromString(String id) { return id; }
+    }; }
+    /// Preserves legacy wallpaper identifiers while using the replacement artwork.
+    public String resource() { return "/assets/img/wallpapers/" + switch (this) {
+        case WALLPAPER_2021_08_26 -> "star-trails.jpg";
+        case WALLPAPER_2016_02_25 -> "sunset.png";
+        case WALLPAPER_2015_06_22 -> "jungle.png";
+    }; }
     /// Returns the precomputed MonetFX seed color extracted from this wallpaper.
     public ThemeColor themeColor() {
         return themeColor;

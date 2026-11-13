@@ -15,6 +15,8 @@ import javafx.scene.shape.SVGPath;
 public enum SVG {
     /// Original ØchreCL two-bay server glyph, distinct from the multiplayer connection graph.
     /// Original compact playback and connection symbols for server controls.
+    /// Camera outline for opening game screenshots.
+    OCHRE_SCREENSHOT("M8 3H16L18 6H22V21H2V6H6ZM8 8H4V19H20V8H17L15 5H9ZM12 9A4 4 0 1 0 12 17A4 4 0 1 0 12 9ZM12 11A2 2 0 1 1 12 15A2 2 0 1 1 12 11Z"),
     OCHRE_PLAY("M8 4L21 12L8 20Z"),
     OCHRE_STOP("M5 5H19V19H5Z"),
     OCHRE_CONNECT("M2 8Q12 -1 22 8L20.5 9.5Q12 2 3.5 9.5ZM5 12Q12 6 19 12L17.5 13.5Q12 9 6.5 13.5ZM8 16Q12 12 16 16L14.5 17.5Q12 15 9.5 17.5ZM12 18A2 2 0 1 0 12 22A2 2 0 1 0 12 18Z"),

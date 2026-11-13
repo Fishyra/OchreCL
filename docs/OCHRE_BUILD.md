@@ -2,7 +2,7 @@
 
 ## 源码
 
-使用 JDK 17，在根目录运行 `./gradlew makeExecutables`（Windows 使用 `gradlew.bat`）。首次构建会下载 Gradle 与依赖。额外的 Bouncy Castle 依赖保留在 lib 中，供 OpenFrp 加密流程使用。
+使用 JDK 17 和 Python 3，先在根目录运行 `python3 packaging/build-bridge.py` 构建可选桥接资源，再运行 `./gradlew makeExecutables`（Windows 使用 `gradlew.bat`）。首次构建会下载 Gradle 与依赖。额外的 Bouncy Castle 依赖保留在 lib 中，供 OpenFrp 加密流程使用。
 
 Microsoft 登录和 CurseForge 接入的构建凭据从 `MICROSOFT_AUTH_ID` 与 `CURSEFORGE_API_KEY` 环境变量读取。仓库不包含这些凭据；普通源码构建默认留空。不要提交自己的环境文件、私钥或服务密码。
 
@@ -17,3 +17,11 @@ Microsoft 登录和 CurseForge 接入的构建凭据从 `MICROSOFT_AUTH_ID` 与 
 ## 自动化
 
 上游工作流移到 `.github/upstream-workflows/` 保存参考，没有启用自动发布、镜像或外部平台同步。当前仓库暂不承诺自动生成安装包。
+
+## 0.3 引导与更新
+
+`packaging/UpdateBootstrap.java` 是独立更新引导器，三平台入口必须同时编译这个文件。版本通过 `OCHRE_RELEASE_VERSION=0.3.0-alpha.1` 传入打包脚本。`packaging/package-linux.py` 与依赖锁记录 Linux 包装配过程。辅助脚本沿用开发机的 JDK 路径与缓存约定，其他机器需调整本地输入路径；不是无前置条件的构建流水线。
+
+Release 中保留 `OchreCL-update.jar` 固定文件名。更新器要求 GitHub 资产提供有效 SHA-256 digest、大小并通过 JAR 检查；旧版先安装带引导器的完整包。
+
+桥接源码位于 `bridge/src/`；协议与能力边界见 `bridge/README.md`。已构建的资源随源码保留，以便与发布包对应；修改组件后必须重建。

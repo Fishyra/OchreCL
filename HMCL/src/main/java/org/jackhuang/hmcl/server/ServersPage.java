@@ -45,8 +45,10 @@ public final class ServersPage extends BorderPane implements DecoratorPage {
         switcher.valueProperty().bindBidirectional(SELECTED);
         JFXButton download = new JFXButton("下载服务器");
         download.setOnAction(event -> { Controllers.getDownloadPage().showServerDownloads(); Controllers.navigate(Controllers.getDownloadPage()); });
+        JFXButton importServer = new JFXButton("导入服务器"); importServer.setGraphic(org.jackhuang.hmcl.ui.SVG.FOLDER_COPY.createIcon(18)); importServer.setOnAction(event -> ServerImporter.show());
         JFXButton deleted = new JFXButton("已删除服务器"); deleted.setOnAction(event -> showDeleted());
-        FlowPane header = new FlowPane(12, 10, new Label("联机服务器"), switcher, download, deleted);
+        JFXButton diagnostics = new JFXButton("网络检测"); diagnostics.setGraphic(org.jackhuang.hmcl.ui.SVG.OCHRE_CONNECT.createIcon(18)); diagnostics.setOnAction(event -> { @Nullable var server = SELECTED.get(); if (server != null) ServerNetworkPane.show(server); else ServerManager.notice("请先选择服务器"); });
+        FlowPane header = new FlowPane(12, 10, new Label("联机服务器"), switcher, download, importServer, deleted, diagnostics);
         header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         header.setPadding(new Insets(0, 0, 14, 0));
         setTop(header);
@@ -75,17 +77,7 @@ public final class ServersPage extends BorderPane implements DecoratorPage {
         send.setOnAction(event -> sendCommand.run()); command.setOnAction(event -> sendCommand.run());
         HBox entry = new HBox(8, command, send); HBox.setHgrow(command, Priority.ALWAYS);
         VBox main = new VBox(8, new ServerStatusStrip(server), console, entry); main.setMinSize(0, 0); VBox.setVgrow(console, Priority.ALWAYS);
-        TextField address = new com.jfoenix.controls.JFXTextField(server.address());
-        address.setEditable(false); address.setMinWidth(0); address.setPrefColumnCount(12);
-        address.setAccessibleText("服务器连接地址，可选择复制");
-        address.focusedProperty().addListener((observable, before, focused) -> { if (focused) javafx.application.Platform.runLater(address::selectAll); });
-        JFXButton copyAddress = new JFXButton("复制"); copyAddress.setAccessibleText("复制服务器连接地址");
-        copyAddress.setOnAction(event -> {
-            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent(); content.putString(server.address());
-            javafx.scene.input.Clipboard.getSystemClipboard().setContent(content); ServerManager.notice("已复制 " + server.address());
-        });
-        HBox addressBar = new HBox(5, address, copyAddress); HBox.setHgrow(address, Priority.ALWAYS);
-        addressBar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        ServerAddressPicker addressBar = new ServerAddressPicker(server);
         Label type = new Label(server.settings.getProperty("core") + " · Minecraft " + server.settings.getProperty("version")); type.setWrapText(true);
         Label status = new Label(); status.textProperty().bind(server.session.stateProperty());
         JFXButton start = new JFXButton("启动服务器"); start.getStyleClass().add("ochre-primary-action");
@@ -124,7 +116,7 @@ public final class ServersPage extends BorderPane implements DecoratorPage {
                 properties.setProperty("online-mode", Boolean.toString(onlineMode.isSelected()));
                 try (var output = Files.newOutputStream(file)) { properties.store(output, "Updated by OchreCL"); }
                 server.save();
-                address.setText(server.address()); ServerManager.notice("服务器设置已保存");
+                addressBar.refresh(); ServerManager.notice("服务器设置已保存");
             } catch (Exception e) { ServerManager.notice("设置无效：内存 512–65536 MiB，端口 1–65535，名称不能为空"); }
         });
         Hyperlink agreement = new Hyperlink("阅读 Minecraft EULA"); agreement.setOnAction(event -> FXUtils.openLink("https://www.minecraft.net/eula"));
@@ -170,7 +162,8 @@ public final class ServersPage extends BorderPane implements DecoratorPage {
         for (String section : java.util.List.of("实例设置", "游戏设置", "玩家管理", "自动备份", "模组 / 插件")) {
             JFXButton function = new JFXButton(section + "  →"); function.setMaxWidth(Double.MAX_VALUE); function.setOnAction(event -> Controllers.navigate(new ServerWorkspacePage(server, section))); functions.getChildren().add(function);
         }
-        functions.getChildren().addAll(services, folder, remove);
+        JFXButton network = new JFXButton("异常监测与应急"); network.setGraphic(org.jackhuang.hmcl.ui.SVG.OCHRE_CONNECT.createIcon(18)); network.setMaxWidth(Double.MAX_VALUE); network.setOnAction(event -> ServerNetworkPane.showEmergency(server));
+        functions.getChildren().addAll(network, services, folder, remove);
         VBox quickSettings = new VBox(10, new Label("名称"), name, new Label("最大内存（MiB）"), memory, new Label("端口"), port, new Label("Java"), javaPath, chooseJava, onlineMode, offlineNote, save);
         TitledPane quick = new TitledPane("快速配置", quickSettings); quick.setExpanded(false); functions.getChildren().add(quick);
         ScrollPane functionScroll = new ScrollPane(functions); functionScroll.setFitToWidth(true); functionScroll.setMinSize(0, 70); functionScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); functionScroll.getStyleClass().add("ochre-server-function-scroll");

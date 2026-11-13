@@ -24,6 +24,6 @@ public final class DesktopLauncher {
         }
         Files.createDirectories(data.resolve("home"));
         Files.createDirectories(data.resolve("local"));
-        Class.forName("org.jackhuang.hmcl.Main").getMethod("main", String[].class).invoke(null, (Object) args);
+        UpdateBootstrap.launch(args);
     }
 }

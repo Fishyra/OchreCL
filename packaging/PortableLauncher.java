@@ -29,6 +29,6 @@ public final class PortableLauncher {
             System.out.println("LAUNCHER=" + Class.forName("org.jackhuang.hmcl.Main").getName());
             return;
         }
-        Class.forName("org.jackhuang.hmcl.Main").getMethod("main", String[].class).invoke(null, (Object) args);
+        UpdateBootstrap.launch(args);
     }
 }

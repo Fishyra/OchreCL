@@ -74,6 +74,7 @@ public final class Launcher extends Application {
     @Override
     public void start(Stage primaryStage) {
         Thread.currentThread().setUncaughtExceptionHandler(CRASH_REPORTER);
+        System.setProperty("ochre.runtime.root", Metadata.HMCL_LOCAL_HOME.resolve("ochre-runtime").toAbsolutePath().toString());
 
         CookieHandler.setDefault(COOKIE_MANAGER);
 
@@ -141,6 +142,8 @@ public final class Launcher extends Application {
         DownloadProviders.init();
         ProxyManager.init();
         Accounts.init();
+        org.jackhuang.hmcl.server.RuntimeSession.restoreGames();
+        org.jackhuang.hmcl.server.ServerManager.load();
         GameDirectoryManager.init();
         AuthlibInjectorServers.init();
         AnimationUtils.init();
@@ -347,6 +350,7 @@ public final class Launcher extends Application {
         runInFX(() -> {
             if (Controllers.getStage() == null)
                 return;
+            org.jackhuang.hmcl.server.ServerWindowSizing.restoreSavedPreference(Controllers.getStage());
             Controllers.getStage().close();
             Schedulers.shutdown();
             Controllers.shutdown();
@@ -360,6 +364,7 @@ public final class Launcher extends Application {
         runInFX(() -> {
             if (Controllers.getStage() == null)
                 return;
+            org.jackhuang.hmcl.server.ServerWindowSizing.restoreSavedPreference(Controllers.getStage());
             Controllers.getStage().close();
             Schedulers.shutdown();
             Controllers.shutdown();

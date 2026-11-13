@@ -14,29 +14,35 @@
 - 服务器控制台、配置、玩家管理、附加项安装与备份。
 - SFTP 与 OpenFrp 接入；工具安装需要玩家明确选择，穿透服务需要自行配置账号/节点。
 
-## 平台与测试状态
+## 0.3.0-alpha.1
+
+[下载完整安装包](https://fishyra.github.io/ochrecl/#download) · [发布说明](https://github.com/Fishyra/OchreCL/releases/tag/v0.3.0-alpha.1)
+
+新增可选的 26.x 游戏桥接、GitHub 更新器、四步首次启动引导、服务器导入、网络检测与地址选择。修复任务悬浮球、实例 Java 选择、沉浸式背景与附加项筛选布局。[详细变化与验证](docs/OCHRE_03_RELEASE.md)
 
 | 平台 | 状态 |
 | --- | --- |
-| macOS Apple Silicon | 主要开发平台；DMG 预览包内置 Java/JavaFX，未进行 Apple 开发者签名与公证 |
-| Windows x64 | 便携测试包；已补充字体回退，仍需真实 Windows 10/11 的完整验证 |
-| Linux / Intel Mac / Windows ARM | 尚未提供经过验证的独立发行包 |
+| macOS Apple Silicon | DMG 内置 Java/JavaFX；macOS 与 26.2 原版游戏桥接实测；未进行 Apple 开发者签名与公证 |
+| Windows x64 | ZIP 便携测试包；完成包结构、校验检查，尚未原生实测 |
+| Linux x64 glibc | TAR.GZ 桌面便携测试包；需 GTK 3，尚未原生实测 |
 
-Whisky 测试曾出现字体崩溃，用户也报告过整机卡顿。不要把兼容层中的初步启动当作真实 Windows 验证，也不要在相同环境中反复启动测试进程。重要游戏与服务器数据请自行备份。
+26.x 是桥接目标家族，目前只原生验证了 26.2；其他版本按实际能力返回结果。安装桥接需玩家逐实例授权并重启游戏。脚本页仅保存草稿，目前不执行脚本。微软登录需要配置项目自己的有效 Client ID，参见[注册说明](docs/OCHRE_MICROSOFT_LOGIN.md)。
 
-启动器不检查或安装上游 HMCL 的自动更新。发行说明与官网信息可能先于本仓库的 Release 资产更新，请核对版本与校验值。
+关于 → 启动器更新使用本仓库的 GitHub Releases 和 SHA-256 校验。旧版需先安装完整 0.3 包，之后可通过更新 JAR 升级；Java/JavaFX 变化仍需完整安装包。[桥接说明](docs/OCHRE_BRIDGE.md)
 
 ## 从源码构建
 
 需要 JDK 17 和网络连接。在仓库根目录运行：
 
 ```sh
+python3 packaging/build-bridge.py
 ./gradlew makeExecutables
 ```
 
 Windows PowerShell：
 
 ```powershell
+python packaging/build-bridge.py
 .\gradlew.bat makeExecutables
 ```
 

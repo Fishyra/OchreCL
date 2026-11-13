@@ -28,7 +28,8 @@ public final class ServerAutomation {
     private static void tick(List<ServerInstance> servers) {
         LocalDateTime now = LocalDateTime.now();
         for (var server : servers) {
-            if (server.maintenance || !server.session.isRunning() || !server.session.stateProperty().get().equals("运行中")) continue;
+            ServerNetworkPane.monitor(server);
+            if (server.maintenance || !server.session.isRunning() || !server.session.stateProperty().get().startsWith("运行中")) continue;
             if (Boolean.parseBoolean(server.settings.getProperty("restart.enabled", "false"))) {
                 try {
                     LocalTime time = LocalTime.parse(server.settings.getProperty("restart.time", "05:00"));

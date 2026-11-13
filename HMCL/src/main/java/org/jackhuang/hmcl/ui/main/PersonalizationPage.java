@@ -163,6 +163,10 @@ public class PersonalizationPage extends StackPane {
             if (updating.value) {
                 return;
             }
+            if (LauncherSettings.THEME_APPEARANCE_BRIGHTNESS_MODE.equals(setting) && org.jackhuang.hmcl.theme.ImmersiveAppearance.MODE.equals(newValue) && !org.jackhuang.hmcl.theme.ImmersiveAppearance.isEnabled()) {
+                updating.value = true; button.setValue(oldValue); updating.value = false;
+                org.jackhuang.hmcl.theme.ImmersiveAppearance.requestEnable(() -> { directProperty.setValue(newValue); settings().getThemeAppearanceOverrides().add(setting); }, () -> {}); return;
+            }
             updating.value = true;
             try {
                 directProperty.setValue(newValue);
@@ -426,9 +430,9 @@ public class PersonalizationPage extends StackPane {
         {
             LineSelectButton<String> brightnessPane = new LineSelectButton<>();
             brightnessPane.setTitle(i18n("settings.launcher.brightness"));
-            brightnessPane.setConverter(name -> i18n("settings.launcher.brightness."
+            brightnessPane.setConverter(name -> "immersive".equals(name) ? org.jackhuang.hmcl.theme.ImmersiveAppearance.LABEL : i18n("settings.launcher.brightness."
                     + Objects.requireNonNullElse(name, "auto").trim().toLowerCase(Locale.ROOT)));
-            brightnessPane.setItems(Arrays.asList("auto", "light", "dark"));
+            brightnessPane.setItems(Arrays.asList("auto", "light", "dark", "immersive"));
             bindThemeAppearanceLineSelectButton(
                     brightnessPane,
                     LauncherSettings.THEME_APPEARANCE_BRIGHTNESS_MODE,
@@ -450,6 +454,7 @@ public class PersonalizationPage extends StackPane {
 
         {
             ComponentSublist themeColorSublist = new ComponentSublist();
+            themeColorSublist.setTooltip(new javafx.scene.control.Tooltip("沉浸式透明模式自动从背景图片提取主题色"));
             themeColorSublist.setTitle(i18n("settings.launcher.theme_color"));
             themeColorSublist.setHasSubtitle(true);
             Supplier<@Nullable ThemeColorSource> effectiveThemeColorSource = () -> {
@@ -497,6 +502,7 @@ public class PersonalizationPage extends StackPane {
                     ThemeColorType.BACKGROUND);
 
             RadioChoiceList<ThemeColorType> themeColorChoiceList = new RadioChoiceList<>();
+            themeColorChoiceList.disableProperty().bind(org.jackhuang.hmcl.theme.ImmersiveAppearance.enabledBinding());
             themeColorChoiceList.setFallbackValue(ThemeColorType.DEFAULT);
             themeColorChoiceList.setChoices(Arrays.asList(
                     defaultColorChoice,
@@ -505,6 +511,7 @@ public class PersonalizationPage extends StackPane {
                     backgroundColorChoice));
 
             JFXButton themeColorOverrideButton = createThemeAppearanceOverrideButton();
+            themeColorOverrideButton.disableProperty().bind(org.jackhuang.hmcl.theme.ImmersiveAppearance.enabledBinding());
             themeColorSublist.setTitleRight(themeColorOverrideButton);
             Holder<Boolean> updatingThemeColor = new Holder<>(false);
             InvalidationListener refreshThemeColor = ignored -> {
@@ -596,12 +603,13 @@ public class PersonalizationPage extends StackPane {
                 event.consume();
             });
             themeColorSublist.descriptionProperty().bind(Bindings.createStringBinding(() -> {
+                        if (org.jackhuang.hmcl.theme.ImmersiveAppearance.isEnabled()) return "跟随背景图片（自动提取）";
                         ThemeColorType type = Objects.requireNonNullElse(
                                 themeColorChoiceList.selectedValueProperty().get(),
                                 ThemeColorType.DEFAULT);
                         return i18n("settings.launcher.theme_color_type." + type.name().toLowerCase(Locale.ROOT));
                     },
-                    themeColorChoiceList.selectedValueProperty()));
+                    themeColorChoiceList.selectedValueProperty(), settings().themeBrightnessModeProperty(), settings().getThemeAppearanceOverrides()));
             refreshThemeColor.invalidated(null);
 
             themeColorSublist.getContent().setAll(themeColorChoiceList);
@@ -651,7 +659,7 @@ public class PersonalizationPage extends StackPane {
             backgroundSublist.setHasSubtitle(true);
 
             JFXComboBox<String> builtinBackgroundComboBox = new JFXComboBox<>();
-            builtinBackgroundComboBox.getItems().setAll(BuiltinBackground.BUILTIN_BACKGROUND_IDS);
+            builtinBackgroundComboBox.getItems().setAll(BuiltinBackground.BUILTIN_BACKGROUND_IDS); builtinBackgroundComboBox.setConverter(BuiltinBackground.converter());
             FXUtils.setLimitWidth(builtinBackgroundComboBox, 160);
 
             RadioChoiceList.Choice<BackgroundType> builtinBackgroundOption =
@@ -674,15 +682,16 @@ public class PersonalizationPage extends StackPane {
                     new PaintChoice(i18n("launcher.background.paint"), BackgroundType.PAINT);
 
             backgroundItem.setChoices(Arrays.asList(
-                    new RadioChoiceList.Choice<>(i18n("message.default"), BackgroundType.DEFAULT)
-                            .setTooltip(i18n("launcher.background.default.tooltip")),
+                    new RadioChoiceList.Choice<>("跟随主题色（默认）", BackgroundType.THEME_COLOR),
+                    new RadioChoiceList.Choice<>("必应壁纸", BackgroundType.BING)
+                            .setTooltip("每日更新并缓存，断网时继续使用缓存图片"),
                     builtinBackgroundOption,
-                    new RadioChoiceList.Choice<>(i18n("launcher.background.theme_color"), BackgroundType.THEME_COLOR),
                     customBackgroundOption,
                     networkBackgroundOption,
                     paintBackgroundOption
             ));
             JFXButton backgroundOverrideButton = createThemeAppearanceOverrideButton();
+            backgroundOverrideButton.disableProperty().bind(org.jackhuang.hmcl.theme.ImmersiveAppearance.enabledBinding());
             backgroundSublist.setTitleRight(backgroundOverrideButton);
             Holder<Boolean> updatingBackground = new Holder<>(false);
             InvalidationListener refreshBackground = ignored -> {
@@ -741,7 +750,7 @@ public class PersonalizationPage extends StackPane {
                                 background.networkImageUrl(),
                                 ""));
                         case PAINT -> paintBackgroundOption.setPaint(background.paint());
-                        case DEFAULT, THEME_COLOR -> {
+                        case DEFAULT, THEME_COLOR, BING -> {
                         }
                     }
                     updateThemeAppearanceOverrideButton(backgroundOverrideButton, !overridden);
@@ -756,6 +765,9 @@ public class PersonalizationPage extends StackPane {
                 updatingBackground.value = true;
                 try {
                     BackgroundType type = Objects.requireNonNullElse(newValue, BackgroundType.DEFAULT);
+                    if (org.jackhuang.hmcl.theme.ImmersiveAppearance.isEnabled() && (type == BackgroundType.PAINT || type == BackgroundType.THEME_COLOR || type == BackgroundType.DEFAULT)) {
+                        backgroundItem.selectedValueProperty().set(oldValue); org.jackhuang.hmcl.server.ServerManager.notice("沉浸式透明需要图片背景；使用纯色前请先切换外观模式"); return;
+                    }
                     settings().backgroundTypeProperty().set(type);
                     switch (type) {
                         case BUILTIN -> settings().builtinBackgroundIdProperty().set(Objects.requireNonNullElse(
@@ -764,7 +776,7 @@ public class PersonalizationPage extends StackPane {
                         case CUSTOM -> settings().customBackgroundImagePathProperty().set(customBackgroundOption.getPath());
                         case NETWORK -> settings().networkBackgroundImageUrlProperty().set(networkBackgroundOption.getText());
                         case PAINT -> settings().customBackgroundPaintProperty().set(paintBackgroundOption.getPaint());
-                        case DEFAULT, THEME_COLOR -> {
+                        case DEFAULT, THEME_COLOR, BING -> {
                         }
                     }
                     settings().getThemeAppearanceOverrides().add(LauncherSettings.THEME_APPEARANCE_BACKGROUND);
@@ -918,8 +930,9 @@ public class PersonalizationPage extends StackPane {
                                     backgroundItem.selectedValueProperty().get(),
                                     BackgroundType.DEFAULT);
                             return switch (type) {
+                                case BING -> "必应壁纸 · 每日更新";
                                 case DEFAULT -> i18n("message.default");
-                                case THEME_COLOR -> i18n("launcher.background.theme_color");
+                                case THEME_COLOR -> "跟随主题色（默认）";
                                 case BUILTIN -> {
                                     String id = settings().builtinBackgroundIdProperty().get();
                                     yield BuiltinBackground.fromIdOrFallback(id).id();
@@ -937,6 +950,7 @@ public class PersonalizationPage extends StackPane {
                             ThemePackManager.ResolvedBackground background =
                                     ThemePackManager.resolveCurrentBackground(ThemePackManager.currentResolveContext());
                             return switch (background.type()) {
+                                case BING -> "必应壁纸 · 每日更新";
                                 case DEFAULT -> i18n("message.default");
                                 case BUILTIN -> Objects.requireNonNullElse(
                                         background.builtinBackgroundId(),
@@ -954,7 +968,7 @@ public class PersonalizationPage extends StackPane {
                                 case PAINT -> background.paint() != null
                                         ? describeBackgroundPaint(background.paint())
                                         : i18n("launcher.background.paint");
-                                case THEME_COLOR -> i18n("launcher.background.theme_color");
+                                case THEME_COLOR -> "跟随主题色（默认）";
                             };
                         } catch (IOException | RuntimeException e) {
                             return i18n("message.default");

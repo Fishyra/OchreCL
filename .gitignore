@@ -95,3 +95,7 @@ language-subtag-registry
 /windows-cache/
 /release-work/
 /.gradle-home/
+
+/bridge/build/
+/linux-cache/
+**/__pycache__/

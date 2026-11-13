@@ -380,24 +380,8 @@ public final class Controllers {
                     .build());
         }
 
-        if (SettingsManager.userState().agreementVersionProperty().get() < 1) {
-            JFXDialogLayout agreementPane = new JFXDialogLayout();
-            agreementPane.setHeading(new Label(i18n("launcher.agreement")));
-            agreementPane.setBody(new Label(i18n("launcher.agreement.hint")));
-            JFXHyperlink agreementLink = new JFXHyperlink(i18n("launcher.agreement"));
-            agreementLink.setExternalLink(Metadata.EULA_URL);
-            JFXButton yesButton = new JFXButton(i18n("launcher.agreement.accept"));
-            yesButton.getStyleClass().add("dialog-accept");
-            yesButton.setOnAction(e -> {
-                UserState userState = userState();
-                userState.agreementVersionProperty().set(1);
-                agreementPane.fireEvent(new DialogCloseEvent());
-            });
-            JFXButton noButton = new JFXButton(i18n("launcher.agreement.decline"));
-            noButton.getStyleClass().add("dialog-cancel");
-            noButton.setOnAction(e -> javafx.application.Platform.exit());
-            agreementPane.setActions(agreementLink, yesButton, noButton);
-            Controllers.dialog(agreementPane);
+        if (!Boolean.TRUE.equals(SettingsManager.state().getShownTips().get("ochre.onboarding.v2"))) {
+            Controllers.dialog(new org.jackhuang.hmcl.ui.construct.OchreWelcomePane());
         }
 
         aprilFools:

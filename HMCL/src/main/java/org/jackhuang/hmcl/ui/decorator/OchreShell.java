@@ -97,6 +97,10 @@ final class OchreShell extends StackPane {
     private final VBox inspector = new VBox(12);
     /// Floating action for all non-home pages.
     private final JFXButton compactLaunch = new JFXButton();
+    /// Currently expanded task surface, absent while the floating action is a circle.
+    private @Nullable FloatingTaskSurface taskMenu;
+    /// Current task identities/statuses; stable updates preserve list scroll position.
+    private String taskMenuSignature = "";
     /// Interruptible motion for navigation width, label opacity and reserved layout width.
     private final Timeline railMotion = new Timeline();
     /// Interruptible motion for the home inspector and compact launch button.
@@ -146,6 +150,7 @@ final class OchreShell extends StackPane {
         // Content scrolls inside the frame; its preferred height must never enlarge the window chrome.
         setMinSize(0, 0); layout.setMinSize(0, 0); pages.setMinSize(0, 0);
         pageViewport.setMinSize(0, 0); inspector.setMinHeight(0); rail.setMinHeight(0);
+        org.jackhuang.hmcl.ui.construct.GameOptionsPane.initialize();
         readPreferences();
         pinned = Boolean.parseBoolean(preferences.getProperty("navigation.pinned", "false"));
         expanded = pinned;
@@ -218,8 +223,11 @@ final class OchreShell extends StackPane {
         compactLaunch.setGraphic(playIcon());
         compactLaunch.getStyleClass().add("ochre-launch-circle");
         compactLaunch.setAccessibleText("启动所选游戏");
-        compactLaunch.setOnAction(event -> { if (!dragged) launch(); });
+        compactLaunch.setOnAction(event -> { if (!dragged && !org.jackhuang.hmcl.ui.construct.OchreTasks.openLatest()) launch(); });
         compactLaunch.setManaged(false);
+        compactLaunch.setOnContextMenuRequested(event -> { showTaskMenu(); event.consume(); });
+        org.jackhuang.hmcl.ui.construct.OchreTasks.SILENT_REVISION.addListener((observable, before, after) -> { updateLaunchIcon(); revealCompact(!showingHome || hasBackgroundWork(), false); placeFloatingButton(); compactLaunch.toFront(); ripple(); });
+        org.jackhuang.hmcl.ui.construct.OchreTasks.ACTIVE.addListener((javafx.collections.ListChangeListener<org.jackhuang.hmcl.ui.construct.OchreTasks.Entry>) change -> { updateLaunchIcon(); refreshTaskMenu(); revealCompact(!showingHome || hasBackgroundWork(), false); placeFloatingButton(); compactLaunch.toFront(); });
         configureDragging();
         notification.getStyleClass().add("ochre-runtime-notification");
         notification.setWrapText(true);
@@ -389,12 +397,13 @@ final class OchreShell extends StackPane {
                 pageMotion.play();
             } else { inspector.setOpacity(1); inspector.setTranslateX(0); }
         }
-        revealCompact(!home, animate());
+        revealCompact(!home || hasBackgroundWork(), animate());
         placeFloatingButton();
     }
 
     /// Starts a distinct fade-and-scale appearance every time the action leaves its hidden home state.
     private void revealCompact(boolean visible, boolean motion) {
+        if (taskMenu != null) return;
         buttonMotion.stop();
         compactLaunch.setManaged(false);
         compactLaunch.setMouseTransparent(!visible);
@@ -455,11 +464,7 @@ final class OchreShell extends StackPane {
             event.consume();
         });
         compactLaunch.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> { if (dragged) event.consume(); });
-        ContextMenu menu = new ContextMenu();
-        MenuItem reset = new MenuItem("恢复右下角位置");
-        reset.setOnAction(event -> { floatingPosition = new FloatingButtonPosition(1, 1); placeFloatingButton(); saveFloatingPosition(); });
-        menu.getItems().add(reset);
-        compactLaunch.setOnContextMenuRequested(event -> menu.show(compactLaunch, event.getScreenX(), event.getScreenY()));
+
     }
 
     /// Repositions without resizing or relaying out any underlying page.
@@ -532,7 +537,9 @@ final class OchreShell extends StackPane {
             stop.setGraphic(stopIcon());
             stop.getStyleClass().add("ochre-launch-wide"); stop.setMaxWidth(Double.MAX_VALUE);
             stop.setOnAction(event -> launch());
-            inspector.getChildren().setAll(heading, panel, stop);
+            JFXButton operate = new JFXButton("操作游戏"); operate.setGraphic(SVG.SETTINGS.createIcon(20)); operate.getStyleClass().add("ochre-launch-wide"); operate.setMaxWidth(Double.MAX_VALUE); operate.setOnAction(event -> org.jackhuang.hmcl.bridge.BridgeManager.offer(instance.getInstanceRoot().toAbsolutePath().normalize().toString(), () -> showGameOperations(session, instance.getInstanceRoot().toAbsolutePath().normalize().toString())));
+            HBox actions = new HBox(10, stop); if (org.jackhuang.hmcl.bridge.BridgeManager.supported(instance)) actions.getChildren().add(operate); HBox.setHgrow(stop, Priority.ALWAYS); HBox.setHgrow(operate, Priority.ALWAYS);
+            inspector.getChildren().setAll(heading, panel, actions);
             updateInspectorWidth();
             return;
         }
@@ -653,10 +660,14 @@ final class OchreShell extends StackPane {
     /// Waits for the game window readiness signal, rather than expanding behind the launch progress popup.
     private boolean runtimeReady() {
         @Nullable HMCLGameInstance instance = selected();
-        return instance != null && gameSession(instance).isRunning() && gameSession(instance).stateProperty().get().equals("运行中");
+        return instance != null && gameSession(instance).isRunning() && gameSession(instance).stateProperty().get().startsWith("运行中");
     }
     /// Rebuilds only when readiness changes, deferring visible expansion until the launch modal has closed.
     private void refreshRuntime() {
+        refreshTaskMenu();
+        updateLaunchIcon();
+        boolean shouldShow = !showingHome || hasBackgroundWork();
+        if (taskMenu == null && compactLaunch.isVisible() != shouldShow) { revealCompact(shouldShow, animate()); placeFloatingButton(); }
         boolean running = runtimeReady();
         if (running == gameRunning) return;
         @Nullable Object dialogs = decorator.getDialogContainer().getProperties().get(org.jackhuang.hmcl.ui.DialogUtils.PROPERTY_DIALOG_PANE_INSTANCE);
@@ -679,11 +690,80 @@ final class OchreShell extends StackPane {
             } else inspectorExtent.set(target);
         }
     }
+    /// Last rendered graphic kind; keeps animation progress stable across runtime polls.
+    private String launchGraphicState = "";
     /// Uses the server join symbol on its workspace and a stop square for a running client.
     private void updateLaunchIcon() {
         boolean server = navigator.getCurrentPage() instanceof org.jackhuang.hmcl.server.ServersPage;
-        compactLaunch.setGraphic(server ? wirelessIcon() : runningGame() ? stopIcon() : playIcon());
-        compactLaunch.setAccessibleText(server ? "加入所选服务器" : runningGame() ? "停止游戏" : "启动所选游戏");
+        String nextGraphic = !org.jackhuang.hmcl.ui.construct.OchreTasks.ACTIVE.isEmpty() ? (org.jackhuang.hmcl.ui.construct.OchreTasks.ACTIVE.stream().anyMatch(task -> task.launching()) ? "launching" : "downloading") : server ? "server" : runningGame() ? "running" : "idle";
+        if (nextGraphic.equals(launchGraphicState)) return;
+        launchGraphicState = nextGraphic;
+        compactLaunch.setGraphic(!org.jackhuang.hmcl.ui.construct.OchreTasks.ACTIVE.isEmpty() ? taskProgressIcon() : server ? wirelessIcon() : runningGame() ? stopIcon() : playIcon());
+        compactLaunch.setAccessibleText(org.jackhuang.hmcl.ui.construct.OchreTasks.ACTIVE.stream().anyMatch(task -> task.launching()) ? "启动中，点击查看进度" : server ? "加入所选服务器" : runningGame() ? "停止游戏" : "启动所选游戏");
+    }
+    /// Animated readiness indicator distinguishes launching from downloading.
+    private Node taskProgressIcon() {
+        if (org.jackhuang.hmcl.ui.construct.OchreTasks.ACTIVE.stream().noneMatch(task -> task.launching())) return SVG.DOWNLOAD.createIcon(24);
+        return new LaunchOrbit();
+    }
+    /// Opens the floating action itself as a live, scrollable task surface.
+    private void showTaskMenu() {
+        if (taskMenu != null) { taskMenu.close(() -> {}); return; }
+        buttonMotion.stop(); placeFloatingButton();
+        taskMenu = new FloatingTaskSurface(this, compactLaunch, () -> { taskMenu = null; taskMenuSignature = ""; revealCompact(!showingHome || hasBackgroundWork(), animate()); }, () -> { floatingPosition = new FloatingButtonPosition(1, 1); placeFloatingButton(); saveFloatingPosition(); });
+        taskMenuSignature = ""; refreshTaskMenu(); taskMenu.open();
+    }
+    /// Makes the task center accessible from home while any game, server or install is active.
+    private boolean hasBackgroundWork() {
+        return !org.jackhuang.hmcl.ui.construct.OchreTasks.ACTIVE.isEmpty();
+    }
+    /// Refreshes rows only when real task state changes; no synthetic placeholder tasks are inserted.
+    private void refreshTaskMenu() {
+        @Nullable FloatingTaskSurface menu = taskMenu; if (menu == null) return;
+        List<Node> rows = new ArrayList<>(); StringBuilder signature = new StringBuilder();
+        for (var task : org.jackhuang.hmcl.ui.construct.OchreTasks.ACTIVE) {
+            String title = task.title().get(); signature.append(task.id()).append(title);
+            rows.add(taskRow(title, task.launching() ? "启动中 · 点击查看进度" : "安装 / 下载 · 点击查看进度", task.launching() ? SVG.OCHRE_PLAY : SVG.DOWNLOAD, () -> menu.close(task.open())));
+        }
+        for (var server : org.jackhuang.hmcl.server.ServerManager.SERVERS) if (server.session.isRunning() || server.busy) {
+            String status = server.session.stateProperty().get(); signature.append(server.directory).append(status);
+            rows.add(taskRow(server.toString(), "服务器 · " + status, SVG.OCHRE_SERVER, () -> menu.close(() -> { org.jackhuang.hmcl.server.ServersPage.SELECTED.set(server); open(org.jackhuang.hmcl.server.ServersPage.getInstance()); })));
+        }
+        org.jackhuang.hmcl.server.RuntimeSession.runningGames().forEach((key, session) -> {
+            String status = session.stateProperty().get(); signature.append(key).append(status);
+            rows.add(taskRow(java.nio.file.Path.of(key).getFileName().toString(), "游戏 · " + status, SVG.OCHRE_PLAY, () -> menu.close(() -> showGameOperations(session, key))));
+        });
+        String next = signature.toString(); if (next.equals(taskMenuSignature) && !next.isEmpty()) return;
+        taskMenuSignature = next;
+        if (rows.isEmpty()) { Label empty = new Label("暂无正在执行的任务"); empty.setWrapText(true); empty.getStyleClass().add("ochre-task-empty"); rows.add(empty); }
+        menu.setEntries(rows);
+    }
+    /// One accessible task shortcut using a themed icon, a name and an explicit running status.
+    private JFXButton taskRow(String title, String status, SVG icon, Runnable action) {
+        Label name = new Label(title); name.setWrapText(true); name.getStyleClass().add("ochre-task-name");
+        Label subtitle = new Label(status); subtitle.setWrapText(true); subtitle.getStyleClass().add("subtitle-label");
+        VBox text = new VBox(3, name, subtitle); text.setMinWidth(0); HBox.setHgrow(text, Priority.ALWAYS);
+        HBox line = new HBox(10, icon.createIcon(22), text); line.setMinWidth(0); line.setAlignment(Pos.CENTER_LEFT);
+        JFXButton row = new JFXButton(); row.getStyleClass().add("ochre-task-row"); row.setAccessibleText(title + "，" + status); row.setGraphic(line); row.setMaxWidth(Double.MAX_VALUE); line.prefWidthProperty().bind(row.widthProperty().subtract(24)); row.setOnAction(event -> action.run()); return row;
+    }
+
+    /// Opens game controls inside the launcher, with live logs and explicit stop confirmation.
+    private void showGameOperations(org.jackhuang.hmcl.server.RuntimeSession session, String key) {
+        VBox pane = new VBox(12); pane.setPadding(new Insets(22)); pane.setPrefSize(800, 600); pane.setMinSize(300, 280); pane.setMaxSize(960, 740); pane.getStyleClass().add("jfx-dialog-layout");
+        Label title = new Label("操作游戏 · " + java.nio.file.Path.of(key).getFileName()); title.setGraphic(SVG.SETTINGS.createIcon(24)); title.getStyleClass().add("ochre-instance-title");
+        var tabs = new org.jackhuang.hmcl.ui.construct.OchreTabs(); VBox.setVgrow(tabs, Priority.ALWAYS);
+        tabs.addPage("声音与视频", SVG.SETTINGS.createIcon(18), new org.jackhuang.hmcl.ui.construct.GameOptionsPane(key));
+        tabs.addPage("运行日志", SVG.SCRIPT.createIcon(18), new org.jackhuang.hmcl.server.RuntimePanel(session));
+        tabs.addPage("脚本 · 预览", SVG.SCRIPT.createIcon(18), new org.jackhuang.hmcl.ui.construct.OchreScriptDrafts());
+        JFXButton folder = new JFXButton("实例文件夹"); folder.setGraphic(SVG.FOLDER.createIcon(18)); folder.setOnAction(event -> FXUtils.openFolder(java.nio.file.Path.of(key)));
+        JFXButton close = new JFXButton("关闭"); close.setGraphic(SVG.CLOSE.createIcon(18)); close.setOnAction(event -> pane.fireEvent(new org.jackhuang.hmcl.ui.construct.DialogCloseEvent()));
+        pane.getChildren().setAll(title, org.jackhuang.hmcl.bridge.BridgeManager.controls(key), tabs, new FlowPane(10, 8, folder, close)); Controllers.dialog(pane);
+    }
+    /// Marks a hidden installation with a short outward wave without keeping a permanent animation running.
+    private void ripple() {
+        var ring = new javafx.scene.shape.Circle(28); ring.setFill(javafx.scene.paint.Color.TRANSPARENT); ring.setStroke(javafx.scene.paint.Color.web("#7CAEB1")); ring.setStrokeWidth(2); ring.setManaged(false); ring.setMouseTransparent(true); getChildren().add(ring);
+        ring.setCenterX(compactLaunch.getLayoutX() + compactLaunch.getWidth() / 2); ring.setCenterY(compactLaunch.getLayoutY() + compactLaunch.getHeight() / 2);
+        var scale = new javafx.animation.ScaleTransition(Duration.millis(650), ring); scale.setToX(2.4); scale.setToY(2.4); var fade = new javafx.animation.FadeTransition(Duration.millis(650), ring); fade.setFromValue(.8); fade.setToValue(0); var motion = new javafx.animation.ParallelTransition(scale, fade); motion.setOnFinished(event -> getChildren().remove(ring)); motion.play();
     }
     /// Creates the standard stop square.
     private Node stopIcon() {

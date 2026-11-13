@@ -173,10 +173,13 @@ public final class ServerCatalog {
         String installationId = UUID.randomUUID().toString();
         Path directory = Files.createDirectory(ServerManager.ROOT.resolve(".install-" + installationId));
         try {
+            progress.accept("阶段:0");
             download(artifact, directory.resolve(artifact.core().equals("Forge") ? "installer.jar" : "server.jar"), progress);
+            progress.accept("阶段:1"); progress.accept("正在校验服务器 JAR 与启动入口…");
             try (var archive = new java.util.jar.JarFile(directory.resolve(artifact.core().equals("Forge") ? "installer.jar" : "server.jar").toFile())) {
                 if (archive.getManifest() == null || archive.getManifest().getMainAttributes().getValue("Main-Class") == null) throw new IOException("下载内容不是可独立启动的服务器 JAR；插件、模组需安装到已有服务器");
             }
+            progress.accept("阶段:2"); progress.accept("正在准备服务器运行环境…");
             Properties settings = new Properties();
             settings.setProperty("name", name.isBlank() ? artifact.label() : name.strip());
             settings.setProperty("core", artifact.core());
@@ -199,6 +202,7 @@ public final class ServerCatalog {
                 configureForgeLaunch(server);
                 server.save();
             }
+            progress.accept("阶段:3"); progress.accept("正在写入实例设置与 EULA 选择…");
             ServerConfiguration.apply(server, options);
             Path completed = ServerManager.ROOT.resolve(installationId);
             Files.move(directory, completed, StandardCopyOption.ATOMIC_MOVE);

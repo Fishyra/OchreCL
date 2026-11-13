@@ -13,21 +13,29 @@ import java.nio.charset.StandardCharsets;
 
 /// Compact live status cards using Minecraft's status protocol without adding commands to the console.
 @NotNullByDefault
-public final class ServerStatusStrip extends FlowPane {
+public final class ServerStatusStrip extends GridPane {
     /// Actual online player count; unavailable stays explicit.
     private final Label players = new Label("—");
     /// Avoids overlapping status probes when a server is slow.
     private boolean probing;
     /// Creates adaptive cards and suspends polling when the page leaves the scene.
     public ServerStatusStrip(ServerInstance server) {
-        super(10, 10); setPadding(new Insets(0, 0, 12, 0));
+        setHgap(10); setVgap(10); setPadding(new Insets(0, 0, 12, 0));
         Label state = new Label(); state.textProperty().bind(server.session.stateProperty());
-        var address = new com.jfoenix.controls.JFXButton(server.address()); address.setAccessibleText("复制服务器连接地址"); address.setOnAction(event -> { var copy = new javafx.scene.input.ClipboardContent(); copy.putString(server.address()); javafx.scene.input.Clipboard.getSystemClipboard().setContent(copy); ServerManager.notice("已复制 " + server.address()); });
-        VBox connection = new VBox(5, new Label("连接地址 · 点击复制"), address); connection.setPadding(new Insets(12)); connection.setPrefWidth(220); connection.getStyleClass().add("ochre-server-controls");
+        VBox connection = new VBox(5, new Label("连接地址"), new ServerAddressPicker(server)); connection.setPadding(new Insets(12)); connection.setPrefWidth(290); connection.getStyleClass().add("ochre-server-controls");
         getChildren().addAll(card("服务器状态", state), connection, card("在线玩家", players), card("游戏版本", new Label(server.settings.getProperty("core", "") + " " + server.settings.getProperty("version", ""))));
+        widthProperty().addListener((observable, before, after) -> arrange(after.doubleValue())); arrange(0);
         javafx.animation.Timeline timer = new javafx.animation.Timeline(new javafx.animation.KeyFrame(javafx.util.Duration.seconds(10), event -> probe(server))); timer.setCycleCount(javafx.animation.Animation.INDEFINITE);
         sceneProperty().addListener((observable, previous, scene) -> { if (scene == null) timer.stop(); else { timer.play(); probe(server); } });
         server.session.stateProperty().addListener(new javafx.beans.value.WeakChangeListener<String>((observable, before, after) -> probe(server)));
+    }
+    /// Keeps exactly four columns on broad panels and a two-by-two grid elsewhere.
+    private void arrange(double width) {
+        int columns = width >= 840 ? 4 : 2;
+        if (getColumnConstraints().size() == columns) return;
+        getColumnConstraints().clear();
+        for (int i = 0; i < columns; i++) { ColumnConstraints column = new ColumnConstraints(); column.setPercentWidth(100.0 / columns); column.setMinWidth(0); getColumnConstraints().add(column); }
+        for (int i = 0; i < getChildren().size(); i++) { var child = getChildren().get(i); GridPane.setColumnIndex(child, i % columns); GridPane.setRowIndex(child, i / columns); if (child instanceof Region region) { region.setMinWidth(0); region.setMaxWidth(Double.MAX_VALUE); } }
     }
     /// Queries a locally owned server off the UI thread; disabled status responses are displayed as unavailable.
     private void probe(ServerInstance server) {

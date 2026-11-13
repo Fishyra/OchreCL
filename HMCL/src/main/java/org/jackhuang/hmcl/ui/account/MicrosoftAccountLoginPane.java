@@ -137,6 +137,21 @@ public class MicrosoftAccountLoginPane extends JFXDialogLayout implements Dialog
             HintPane snapshotHint = new HintPane(MessageDialogPane.MessageType.ERROR);
             snapshotHint.setSegment(i18n("account.methods.microsoft.snapshot"));
             warningPane.getChildren().setAll(snapshotHint);
+            snapshotHint.setText("此版本尚未配置 ØchreCL 的 Microsoft 应用 Client ID。请输入应用 ID；不要输入密码或 Client Secret。");
+            com.jfoenix.controls.JFXTextField clientId = new com.jfoenix.controls.JFXTextField(); clientId.setPromptText("Microsoft 应用 Client ID");
+            JFXButton saveClient = new JFXButton("保存并继续登录"); saveClient.setGraphic(org.jackhuang.hmcl.ui.SVG.CHECK.createIcon(18));
+            Label validation = new Label(); validation.setWrapText(true);
+            saveClient.setOnAction(event -> {
+                try {
+                    String value = clientId.getText().strip();
+                    if (!value.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")) throw new java.io.IOException("请输入有效的应用 Client ID");
+                    java.nio.file.Files.createDirectories(org.jackhuang.hmcl.Metadata.HMCL_LOCAL_HOME);
+                    java.nio.file.Files.writeString(org.jackhuang.hmcl.Metadata.HMCL_LOCAL_HOME.resolve("microsoft-client-id.txt"), value);
+                    btnLogin.setDisable(false); step.set(new Step.Init());
+                } catch (java.io.IOException error) { validation.setText(error.getMessage()); }
+            });
+            JFXButton instructions = new JFXButton("打开 Microsoft 应用注册"); instructions.setOnAction(event -> FXUtils.openLink("https://entra.microsoft.com/"));
+            rootContainer.getChildren().addAll(clientId, validation, new javafx.scene.layout.FlowPane(10, 10, saveClient, instructions));
             btnLogin.setDisable(true);
             loginButtonSpinner.setLoading(false);
         } else if (currentStep instanceof Step.Init) {

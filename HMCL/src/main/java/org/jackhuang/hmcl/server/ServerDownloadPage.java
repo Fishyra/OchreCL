@@ -23,7 +23,7 @@ public final class ServerDownloadPage extends BorderPane {
     /// Status of the current mainstream provider request.
     private final Label status = new Label();
     /// Mainstream provider version rows.
-    private final VBox rows = new VBox(8);
+    private final ServerDownloadList rows = new ServerDownloadList();
     /// Retained mainstream list so returning from search preserves the selected provider.
     private final SpinnerPane versions = new SpinnerPane();
     /// Community results are rendered below the same toolbar.
@@ -47,7 +47,7 @@ public final class ServerDownloadPage extends BorderPane {
         filters.setPadding(new Insets(12)); filters.getStyleClass().addAll("ochre-server-controls", "ochre-core-toolbar");
         for (Region control : new Region[]{core, search, submit, refresh}) { control.setMinHeight(44); control.setPrefHeight(44); control.setMaxHeight(44); }
         BorderPane.setMargin(filters, new Insets(0, 0, 12, 0)); toolbar = filters; setTop(filters);
-        ScrollPane scroll = new ScrollPane(rows); scroll.setFitToWidth(true);
+        ServerDownloadList scroll = rows;
         VBox list = new VBox(12, status, scroll); VBox.setVgrow(scroll, Priority.ALWAYS);
         versions.setContent(list); versions.setOnFailedAction(event -> load());
         community = new ServerCoreSearch(this::showVersions, page -> { setTop(page instanceof ServerCoreSearch ? toolbar : null); showPage(page, !(page instanceof ServerCoreSearch)); });
@@ -68,7 +68,7 @@ public final class ServerDownloadPage extends BorderPane {
     private void showVersions() { community.cancelSearch(); showPage(versions, false); search.clear(); }
     /// Populates selectable game versions and moves directly into build/configuration selection.
     private void load() {
-        long request = ++generation; String provider = core.getValue(); rows.getChildren().clear(); status.setText(""); versions.setFailedReason(null); versions.showSpinner();
+        long request = ++generation; String provider = core.getValue(); rows.getItems().clear(); status.setText(""); versions.setFailedReason(null); versions.showSpinner();
         Schedulers.io().execute(() -> {
             try { var available = ServerCatalog.versions(provider); Platform.runLater(() -> {
                 if (request != generation) return; versions.hideSpinner(); status.setText(available.isEmpty() ? "暂无可用版本" : "选择游戏版本，然后配置并部署");
@@ -77,7 +77,7 @@ public final class ServerDownloadPage extends BorderPane {
                     Label title = new Label("Minecraft " + version); Region gap = new Region(); HBox.setHgrow(gap, Priority.ALWAYS);
                     HBox line = new HBox(14, new ServerCoreArtwork(provider, ""), title, gap, new Label("→")); line.setAlignment(Pos.CENTER_LEFT); line.prefWidthProperty().bind(row.widthProperty().subtract(34)); row.setGraphic(line);
                     row.setOnAction(event -> { setTop(null); showPage(new ServerDeploymentPage(provider, version, () -> { setTop(toolbar); showPage(versions, false); }), true); });
-                    rows.getChildren().add(row);
+                    rows.getItems().add(row);
                 }
             }); } catch (Exception exception) { Platform.runLater(() -> { if (request == generation) { versions.setLoading(false); versions.setFailedReason("获取失败，点击重试：" + exception.getMessage()); } }); }
         });

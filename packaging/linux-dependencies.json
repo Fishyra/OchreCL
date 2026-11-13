@@ -1,0 +1,27 @@
+{
+  "runtime": {
+    "name": "zulu17.70.113-ca-jre17.0.21.0.3-linux_x64.tar.gz",
+    "url": "https://cdn.azul.com/zulu/bin/zulu17.70.113-ca-jre17.0.21.0.3-linux_x64.tar.gz",
+    "sha256": "1921269ee6866125deebf04c8de8c05a6e7810f7cd0ad723e02c2990288e1757"
+  },
+  "javafx": [
+    {
+      "name": "javafx-base-21.0.8-linux.jar",
+      "url": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-base/21.0.8/javafx-base-21.0.8-linux.jar",
+      "sha1": "4a9707853e6cfe0520ebe24ad3c58411ffedf5c0",
+      "sha256": "8083c0f08179b761902863e4cf811225f86900fe8c0b9fff19de0d819c78e962"
+    },
+    {
+      "name": "javafx-graphics-21.0.8-linux.jar",
+      "url": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-graphics/21.0.8/javafx-graphics-21.0.8-linux.jar",
+      "sha1": "efc080757b6b0cfe1ecbfddef27a44496549afa4",
+      "sha256": "14bdb87e77456f5cd55b2f726516c30c939e0b42ffde346892c975e83b74afd1"
+    },
+    {
+      "name": "javafx-controls-21.0.8-linux.jar",
+      "url": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-controls/21.0.8/javafx-controls-21.0.8-linux.jar",
+      "sha1": "3e48e35bfebdb3de88092909ef69de25db22eaf8",
+      "sha256": "6194690e0b35076c638153ff7d4f701383ae6c1232470711194c4bd6c6890114"
+    }
+  ]
+}

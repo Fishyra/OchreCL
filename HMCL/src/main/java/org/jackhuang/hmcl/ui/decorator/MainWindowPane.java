@@ -117,6 +117,8 @@ final class MainWindowPane extends StackPane {
         InvalidationListener titleBarBackgroundListener = observable -> updateTitleBarBackground();
         Themes.colorSchemeProperty().addListener(holder.weak(titleBarBackgroundListener));
         Themes.titleBarTransparentProperty().addListener(holder.weak(titleBarBackgroundListener));
+        org.jackhuang.hmcl.setting.SettingsManager.settings().themeBrightnessModeProperty().addListener(holder.weak(titleBarBackgroundListener));
+        org.jackhuang.hmcl.setting.SettingsManager.settings().getThemeAppearanceOverrides().addListener(holder.weak(titleBarBackgroundListener));
 
         InvalidationListener navBarListener = observable -> updateNavBar();
         decorator.stateProperty().addListener(holder.weak(navBarListener));
@@ -124,7 +126,10 @@ final class MainWindowPane extends StackPane {
 
         decorator.capableDraggingWindow(titleBar);
 
-        getChildren().setAll(backgroundNode, frame);
+        GlassBackdrop glass = new GlassBackdrop(this, backgroundNode);
+        javafx.scene.control.Hyperlink credit = new javafx.scene.control.Hyperlink(); credit.textProperty().bind(org.jackhuang.hmcl.theme.BingWallpaper.creditProperty()); credit.setMaxWidth(500); credit.getStyleClass().add("ochre-wallpaper-credit"); credit.setTooltip(new javafx.scene.control.Tooltip("Bing 每日壁纸 · 图片版权归原作者")); credit.setOnAction(event -> FXUtils.openLink("https://www.bing.com/"));
+        credit.visibleProperty().bind(org.jackhuang.hmcl.setting.SettingsManager.settings().backgroundTypeProperty().isEqualTo(org.jackhuang.hmcl.setting.BackgroundType.BING)); credit.managedProperty().bind(credit.visibleProperty()); StackPane.setAlignment(credit, Pos.BOTTOM_CENTER); StackPane.setMargin(credit, new Insets(0, 0, 3, 0));
+        getChildren().setAll(backgroundNode, glass, frame, credit);
     }
 
     /// Moves the custom title bar into or out of the native dragging header.
@@ -246,7 +251,7 @@ final class MainWindowPane extends StackPane {
     /// Recomputes the title-bar background for the current theme and transparency preference.
     private void updateTitleBarBackground() {
         @Nullable ColorScheme colorScheme = Themes.getColorScheme();
-        if (colorScheme == null) {
+        if (colorScheme == null || org.jackhuang.hmcl.theme.ImmersiveAppearance.isEnabled()) {
             titleBar.setBackground(null);
         } else if (Themes.titleBarTransparentProperty().get()) {
             Color surface = colorScheme.getSurface();

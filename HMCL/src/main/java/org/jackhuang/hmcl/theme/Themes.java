@@ -82,6 +82,9 @@ public final class Themes {
     /// The seed color extracted from the last loaded wallpaper image.
     private static final ReadOnlyObjectWrapper<@Nullable ThemeColor> wallpaperThemeColor = new ReadOnlyObjectWrapper<>();
 
+    /// Uses wallpaper luminance for readable glass foregrounds.
+    private static final javafx.beans.property.ObjectProperty<Brightness> wallpaperBrightness = new javafx.beans.property.SimpleObjectProperty<>(Brightness.LIGHT);
+
     /// The resolved launcher theme used to build the current MonetFX color scheme.
     private static final ObjectExpression<ResolvedTheme> theme = new ObjectBinding<>() {
         {
@@ -97,6 +100,7 @@ public final class Themes {
             observables.add(settings().customBackgroundImagePathProperty());
             observables.add(settings().customBackgroundPaintProperty());
             observables.add(wallpaperThemeColor);
+            observables.add(wallpaperBrightness);
             if (FXUtils.DARK_MODE != null) {
                 observables.add(FXUtils.DARK_MODE);
             }
@@ -151,6 +155,10 @@ public final class Themes {
             backgroundType = ThemePackManager.resolveCurrentBackground(context).type();
         } catch (IOException | RuntimeException e) {
             backgroundType = BackgroundType.DEFAULT;
+        }
+        if (ImmersiveAppearance.isEnabled()) {
+            ThemeColor loaded = wallpaperThemeColor.get();
+            return loaded != null ? loaded : getBackgroundThemeColor(fallback);
         }
         return resolveThemeColor(
                 fallback,
@@ -228,7 +236,7 @@ public final class Themes {
                 case BUILTIN -> BuiltinBackground.fromIdOrFallback(background.builtinBackgroundId()).themeColor();
                 case PAINT -> background.paint() instanceof Color color ? ThemeColor.of(color) : fallback;
                 case THEME_COLOR -> ThemeColor.DEFAULT;
-                case DEFAULT, NETWORK -> fallback;
+                case DEFAULT, NETWORK, BING -> fallback;
             };
         } catch (IOException | RuntimeException e) {
             return fallback;
@@ -383,7 +391,7 @@ public final class Themes {
             if (settings().getThemeAppearanceOverrides().contains(LauncherSettings.THEME_APPEARANCE_BRIGHTNESS_MODE)) {
                 String val = settings().themeBrightnessModeProperty().get();
                 auto = val == null || switch (val.trim().toLowerCase(Locale.ROOT)) {
-                    case "light", "dark" -> false;
+                    case "light", "dark", "immersive" -> false;
                     default -> true;
                 };
             } else {
@@ -455,6 +463,7 @@ public final class Themes {
         String themeBrightnessMode = settings().themeBrightnessModeProperty().get();
         return switch (Objects.toString(themeBrightnessMode, "").trim().toLowerCase(Locale.ROOT)) {
             case "light" -> Brightness.LIGHT;
+            case "immersive" -> wallpaperBrightness.get();
             case "dark" -> Brightness.DARK;
             default -> getAutomaticBrightness();
         };
@@ -464,6 +473,7 @@ public final class Themes {
     ///
     /// @return the effective launcher brightness
     public static Brightness getCurrentBrightness() {
+        ImmersiveAppearance.install();
         Brightness contextBrightness = getThemeConditionBrightness();
         if (!settings().getThemeAppearanceOverrides().contains(LauncherSettings.THEME_APPEARANCE_BRIGHTNESS_MODE)) {
             try {
@@ -618,6 +628,7 @@ public final class Themes {
 
     /// Returns the configured launcher background loading policy.
     private static BackgroundLoadPolicy getBackgroundLoadPolicy() {
+        if (settings().backgroundTypeProperty().get() == BackgroundType.BING) return BackgroundLoadPolicy.SHOW_FALLBACK_WHILE_LOADING;
         try {
             return ThemePackManager.resolveCurrentBackgroundLoadPolicy();
         } catch (RuntimeException e) {
@@ -634,7 +645,7 @@ public final class Themes {
     /// Refreshes the current JavaFX launcher background asynchronously.
     public static void refreshBackground() {
         final int currentGeneration = ++backgroundLoadGeneration;
-        if (getBackgroundLoadPolicy() == BackgroundLoadPolicy.SHOW_FALLBACK_WHILE_LOADING) {
+        if (getBackgroundLoadPolicy() == BackgroundLoadPolicy.SHOW_FALLBACK_WHILE_LOADING && !(settings().backgroundTypeProperty().get() == BackgroundType.BING && loadedBackground != null && !loadedBackground.fallbackBackground())) {
             applyLoadedBackground(loadFallbackBackground(), currentGeneration);
         }
         Task.supplyAsync(Schedulers.io(), Themes::loadBackground)
@@ -654,6 +665,14 @@ public final class Themes {
             return;
         }
 
+        if (newLoadedBackground instanceof LoadedBackground.Image imageBackground) {
+            var image = imageBackground.image();
+            var pixels = image.getPixelReader(); double luminance = 0; int count = 0;
+            if (pixels != null) for (int y = 0; y < image.getHeight(); y += Math.max(1, (int) image.getHeight() / 32)) for (int x = 0; x < image.getWidth(); x += Math.max(1, (int) image.getWidth() / 32)) {
+                var color = pixels.getColor(x, y); luminance += .2126 * color.getRed() + .7152 * color.getGreen() + .0722 * color.getBlue(); count++;
+            }
+            if (count > 0) wallpaperBrightness.set(luminance / count < .52 ? Brightness.DARK : Brightness.LIGHT);
+        }
         loadedBackground = newLoadedBackground;
         background.set(newLoadedBackground.background());
         wallpaperThemeColor.set(newLoadedBackground.wallpaperThemeColor());
@@ -704,6 +723,9 @@ public final class Themes {
         @Nullable Image image = null;
         @Nullable ThemeColor imageThemeColor = null;
         switch (resolvedBackground.type()) {
+            case BING:
+                try { image = BingWallpaper.load(); } catch (IOException error) { LOG.warning("Unable to load Bing wallpaper", error); }
+                break;
             case CUSTOM:
                 @Nullable ThemePackResource imageResource = resolvedBackground.imageResource();
                 if (imageResource != null) {
@@ -739,7 +761,7 @@ public final class Themes {
                 BuiltinBackground builtinBackground =
                         BuiltinBackground.fromIdOrFallback(resolvedBackground.builtinBackgroundId());
                 image = loadBuiltinBackgroundImage(builtinBackground.id());
-                imageThemeColor = builtinBackground.themeColor();
+                imageThemeColor = extractWallpaperThemeColor(image);
                 break;
             case PAINT:
                 @Nullable Paint paint = resolvedBackground.paint();
@@ -819,7 +841,7 @@ public final class Themes {
                     null,
                     themeColorPaint,
                     opacity);
-            case DEFAULT, BUILTIN, CUSTOM, NETWORK -> new ThemePackManager.ResolvedBackground(
+            case DEFAULT, BUILTIN, CUSTOM, NETWORK, BING -> new ThemePackManager.ResolvedBackground(
                     BackgroundType.BUILTIN,
                     BuiltinBackground.FALLBACK.id(),
                     null,
@@ -1012,8 +1034,7 @@ public final class Themes {
 
     /// Loads one built-in launcher wallpaper by ID.
     private static Image loadBuiltinBackgroundImage(@Nullable String id) {
-        String wallpaperId = BuiltinBackground.fromIdOrFallback(id).id();
-        return newBuiltinImage("/assets/img/wallpapers/" + wallpaperId + ".jpg");
+        return newBuiltinImage(BuiltinBackground.fromIdOrFallback(id).resource());
     }
 
     /// Loads a random readable image from a directory.

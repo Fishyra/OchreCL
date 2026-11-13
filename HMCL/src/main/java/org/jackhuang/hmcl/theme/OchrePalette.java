@@ -43,7 +43,21 @@ public final class OchrePalette {
                         .append(ThemeColor.getColorDisplayName(color(scheme, role))).append(";\n");
             }
         }
-        colors(scheme).forEach((name, color) -> builder.append("  ").append(name).append(": ")
+        Map<String, Color> resolved = new LinkedHashMap<>(colors(scheme));
+        if (ImmersiveAppearance.isEnabled()) {
+            for (ColorRole role : ColorRole.ALL) {
+                String name = role.getVariableName();
+                if (name.contains("-on-")) builder.append("  ").append(name).append(": ").append(scheme.getBrightness() == Brightness.DARK ? "#FFFFFF" : "#101010").append(";\n");
+                if ((name.contains("surface") || name.contains("background")) && !name.contains("-on-")) builder.append("  ").append(name).append(": ").append(ThemeColor.getColorDisplayNameWithOpacity(color(scheme, role), .12)).append(";\n");
+            }
+            Color foreground = scheme.getBrightness() == Brightness.DARK ? Color.WHITE : Color.web("#101010");
+            resolved.put("-ochre-ink", foreground); resolved.put("-ochre-action-ink", foreground);
+            for (String key : new String[]{"-ochre-rail", "-ochre-panel", "-ochre-inspector", "-ochre-muted-surface", "-ochre-card", "-ochre-log", "-ochre-action", "-ochre-selected"}) {
+                double opacity = key.equals("-ochre-log") ? .22 : key.equals("-ochre-action") ? .30 : key.equals("-ochre-panel") ? .10 : .18;
+                resolved.put(key, alpha(resolved.get(key), opacity));
+            }
+        }
+        resolved.forEach((name, color) -> builder.append("  ").append(name).append(": ")
                 .append(ThemeColor.getColorDisplayNameWithOpacity(color, color.getOpacity())).append(";\n"));
     }
 

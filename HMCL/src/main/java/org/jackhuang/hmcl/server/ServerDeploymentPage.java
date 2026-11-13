@@ -17,6 +17,8 @@ public final class ServerDeploymentPage extends BorderPane {
     /// Exact immutable builds available for the chosen game version.
     private final ListView<ServerCatalog.Artifact> builds = new JFXListView<>();
     /// Status for provider/build failures.
+    private final org.jackhuang.hmcl.ui.construct.SpinnerPane loading = new org.jackhuang.hmcl.ui.construct.SpinnerPane();
+    /// Status of the selected provider request.
     private final Label status = new Label("正在获取构建…");
     /// Builds configuration before any core binary is downloaded.
     public ServerDeploymentPage(String core, String version, Runnable back) {
@@ -27,8 +29,9 @@ public final class ServerDeploymentPage extends BorderPane {
         getStyleClass().add("ochre-server-download");
         setPadding(new Insets(6));
         Label heading = new Label(core + " · Minecraft " + version); heading.setWrapText(true); heading.setMinWidth(0); status.setWrapText(true);
-        VBox left = new VBox(10, action("← 返回版本列表", back), heading, status, builds); VBox.setVgrow(builds, Priority.ALWAYS); left.setMinWidth(160);
-        left.setPadding(new Insets(14)); left.getStyleClass().add("ochre-deployment-panel"); builds.setMinHeight(0); builds.getStyleClass().add("ochre-deployment-builds"); roundPanel(left);
+        loading.setContent(builds); loading.showSpinner(); loading.setMinSize(0, 0);
+        VBox left = new VBox(10, action("← 返回版本列表", back), heading, status, loading); VBox.setVgrow(loading, Priority.ALWAYS); left.setMinWidth(160);
+        left.setPadding(new Insets(14)); left.getStyleClass().add("ochre-deployment-panel"); builds.setCellFactory(list -> new com.jfoenix.controls.JFXListCell<>()); builds.getStyleClass().add("jfx-list-view-float"); builds.setMinHeight(0); builds.getStyleClass().add("ochre-deployment-builds"); roundPanel(left);
         VBox fields = new VBox(12); fields.setPadding(new Insets(18)); fields.getStyleClass().add("ochre-server-controls");
         Map<String, TextInputControl> values = new LinkedHashMap<>();
         input(fields, values, "name", "服务器名称", core + " " + version);
@@ -76,9 +79,14 @@ public final class ServerDeploymentPage extends BorderPane {
         VBox footer = new VBox(8, eula, actions); footer.setPadding(new Insets(14, 18, 14, 18)); footer.getStyleClass().addAll("ochre-server-controls", "ochre-deployment-footer");
         BorderPane configuration = new BorderPane(scroll); configuration.setBottom(footer); configuration.setMinWidth(200); configuration.getStyleClass().add("ochre-deployment-panel"); roundPanel(configuration);
         SplitPane split = new SplitPane(left, configuration); split.getStyleClass().add("ochre-deployment-split"); split.setDividerPositions(.34); setCenter(split);
+        loading.setOnFailedAction(event -> loadBuilds(source)); loadBuilds(source);
+    }
+    /// Uses the normal download spinner for each retry rather than leaving a textual loading label.
+    private void loadBuilds(java.util.concurrent.Callable<@org.jetbrains.annotations.Unmodifiable List<ServerCatalog.Artifact>> source) {
+        loading.setFailedReason(null); loading.showSpinner();
         Schedulers.io().execute(() -> {
-            try { var items = source.call(); Platform.runLater(() -> { builds.getItems().setAll(items); builds.getSelectionModel().selectFirst(); status.setText(items.isEmpty() ? "没有可用构建" : "已自动选择推荐构建"); }); }
-            catch (Exception exception) { Platform.runLater(() -> status.setText("获取失败：" + exception.getMessage())); }
+            try { var items = source.call(); Platform.runLater(() -> { loading.hideSpinner(); builds.getItems().setAll(items); builds.getSelectionModel().selectFirst(); status.setText(items.isEmpty() ? "没有可用构建" : "已自动选择推荐构建"); }); }
+            catch (Exception exception) { Platform.runLater(() -> { loading.setLoading(false); loading.setFailedReason("获取失败：" + exception.getMessage()); }); }
         });
     }
     /// Clips scrolling children to the same rounded outline as their containing panel.

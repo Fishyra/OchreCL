@@ -15,7 +15,7 @@ import subprocess
 import zipfile
 
 BASE = Path(__file__).resolve().parents[1]
-VERSION = '0.1.0-preview.1'
+VERSION = os.environ.get('OCHRE_RELEASE_VERSION', '0.3.0-alpha.1')
 FX = {
     'javafx-base-21.0.8-win.jar': 'b1aecc348fcd904a9869d661eecda9fb0d4d300724a1344bfe074cbf2ba01b3b',
     'javafx-graphics-21.0.8-win.jar': 'f32a1bcbeae70cf416b8da7e7c3e6698f18ba09783d7ff77047edf119a044ccd',
@@ -55,7 +55,7 @@ def main():
     inputs.mkdir(parents=True)
     classes.mkdir()
     shutil.copy2(jar, inputs / 'OchreCL.jar')
-    subprocess.run([args.javac, '--release', '17', '-encoding', 'UTF-8', '-d', str(classes), str(BASE / 'packaging/PortableLauncher.java')], check=True)
+    subprocess.run([args.javac, '--release', '17', '-encoding', 'UTF-8', '-d', str(classes), str(BASE / 'packaging/PortableLauncher.java'), str(BASE / 'packaging/UpdateBootstrap.java')], check=True)
     with zipfile.ZipFile(inputs / 'portable-bootstrap.jar', 'w', zipfile.ZIP_DEFLATED) as archive:
         archive.writestr('META-INF/MANIFEST.MF', 'Manifest-Version: 1.0\r\nMain-Class: io.ochrecl.bootstrap.PortableLauncher\r\nClass-Path: OchreCL.jar\r\n\r\n')
         for file in classes.rglob('*.class'):

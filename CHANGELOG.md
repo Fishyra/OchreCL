@@ -1,3 +1,7 @@
+# 0.3.0-alpha.1
+
+详见 [发布变化与验证](docs/OCHRE_03_RELEASE.md) 与 [游戏桥接说明](docs/OCHRE_BRIDGE.md)。
+
 # 更新记录
 
 ## 0.1.0-preview.2（2026-11-07）

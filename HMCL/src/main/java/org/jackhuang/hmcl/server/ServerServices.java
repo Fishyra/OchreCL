@@ -21,13 +21,20 @@ public final class ServerServices {
     /// Keeps temporary credentials outside SFTP roots.
     private static final Path PRIVATE = Metadata.HMCL_LOCAL_HOME.resolve("ochre-service-runtime");
     /// Installs shutdown cleanup once without stopping unrelated system services.
-    static { Runtime.getRuntime().addShutdownHook(new Thread(ServerServices::stopAll, "Ochre service cleanup")); }
+    // Independent supervisors own helper lifetimes; exiting the UI no longer disconnects server tunnels.
     /// Utility class.
     private ServerServices() {}
     /// Stable runtime identity for a service on one installation.
     private static String key(ServerInstance server, ServerToolInstaller.Tool tool) { return server.directory.toAbsolutePath().normalize() + ":" + tool; }
     /// Returns whether the owned helper process remains alive.
     public static boolean running(ServerInstance server, ServerToolInstaller.Tool tool) { @Nullable Process process = ACTIVE.get(key(server, tool)); return process != null && process.isAlive(); }
+    /// Reconnects helper controls without loading credentials or restarting an already-live tunnel.
+    public static void restore(ServerInstance server) {
+        for (var tool : ServerToolInstaller.Tool.values()) {
+            var recovered = org.jackhuang.hmcl.util.platform.DurableProcess.reconnect(server.directory.resolve(".ochre-runtime-" + tool.name().toLowerCase(java.util.Locale.ROOT)));
+            recovered.ifPresent(process -> { String identity = key(server, tool); if (ACTIVE.putIfAbsent(identity, process) == null) process.onExit().thenRun(() -> ACTIVE.remove(identity, process)); });
+        }
+    }
     /// Starts password-authenticated SFTP, restricted to the selected server and loopback interface.
     public static void sftp(ServerInstance server, int port, String user, String password) throws Exception {
         sftp(server, "127.0.0.1", port, user, password);
@@ -68,7 +75,7 @@ public final class ServerServices {
         if (tunnel.localPort() != Integer.parseInt(server.settings.getProperty("port", "25565"))) throw new IOException("服务器端口已更改，请重新选择 OpenFrp 隧道");
         if (tunnel.id() <= 0 || tunnel.token().isBlank()) throw new IOException("OpenFrp 隧道授权无效");
         start(server, ServerToolInstaller.Tool.OPENFRP, new ProcessBuilder(ServerToolInstaller.path(ServerToolInstaller.Tool.OPENFRP).toString(), "-n", "-u", tunnel.token(), "-p", Integer.toString(tunnel.id())).directory(privateDirectory().toFile()), null);
-        server.settings.setProperty("service.openfrp.id", Integer.toString(tunnel.id())); server.save();
+        server.settings.setProperty("service.openfrp.id", Integer.toString(tunnel.id())); server.settings.setProperty("service.openfrp.address", tunnel.address()); server.save();
         ServerManager.notice("OpenFrp 客户端已启动 · " + tunnel.address());
     }
     /// Creates owner-only credential storage on POSIX platforms.
@@ -86,7 +93,7 @@ public final class ServerServices {
         String identity = key(server, tool);
         if (running(server, tool)) throw new IOException("对应服务已经运行");
         builder.redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD);
-        Process process = builder.start(); ACTIVE.put(identity, process);
+        Process process = org.jackhuang.hmcl.util.platform.DurableProcess.start(builder, server.directory.resolve(".ochre-runtime-" + tool.name().toLowerCase(java.util.Locale.ROOT)), config); ACTIVE.put(identity, process);
         try {
             if (process.waitFor(1500, TimeUnit.MILLISECONDS)) throw new IOException("工具启动失败（退出代码 " + process.exitValue() + "），请检查端口及认证配置");
         } catch (Exception exception) { process.destroy(); ACTIVE.remove(identity, process); if (config != null) Files.deleteIfExists(config); throw exception; }

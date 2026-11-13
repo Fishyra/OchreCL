@@ -50,6 +50,7 @@ public final class ServerManager {
                         if (!dir.getFileName().toString().startsWith(".") && Files.isRegularFile(dir.resolve("ochre-server.properties"))) values.add(new ServerInstance(dir));
                     }
                 }
+                values.forEach(ServerServices::restore);
                 Platform.runLater(() -> SERVERS.addAll(values));
             } catch (IOException e) { notice("服务器列表读取失败：" + e.getMessage()); }
         });
@@ -67,23 +68,10 @@ public final class ServerManager {
         if (text.contains("成功") || text.contains("已复制") || text.contains("已保存") || text.contains("已恢复") || text.contains("部署完成")) return NoticeKind.SUCCESS;
         return NoticeKind.INFO;
     }
-    /// Defers application exit until owned servers have saved and stopped, without silently killing worlds.
+    /// Closing the launcher detaches from supervised processes; explicit stop remains in the server panel.
     public static boolean deferShutdown(Runnable proceed) {
-        var active = SERVERS.stream().filter(server -> server.busy || server.session.isRunning()).toList();
-        if (active.isEmpty()) return false;
-        if (shuttingDown) return true;
-        shuttingDown = true;
-        notice("正在保存并停止服务器，完成后退出…");
-        for (var server : active) { server.stopping = true; if (server.session.isRunning()) stop(server, false); }
-        Schedulers.io().execute(() -> {
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(65);
-            try {
-                while (active.stream().anyMatch(server -> server.busy || server.session.isRunning()) && System.nanoTime() < deadline) Thread.sleep(100);
-                boolean complete = active.stream().noneMatch(server -> server.busy || server.session.isRunning());
-                Platform.runLater(() -> { shuttingDown = false; if (complete) proceed.run(); else notice("服务器尚未停止，已保留窗口。请查看控制台或明确选择强制结束。"); });
-            } catch (InterruptedException e) { Thread.currentThread().interrupt(); Platform.runLater(() -> shuttingDown = false); }
-        });
-        return true;
+        // Process supervisors retain console pipes independently; closing the UI is a detach, not a kill.
+        return false;
     }
 
     /// A recoverable server installation kept intact after removal from the active list.
@@ -191,7 +179,7 @@ public final class ServerManager {
                 command.addAll(List.of("nogui", "--port", Integer.toString(port)));
                 command.addAll(ServerConfiguration.serverArguments(server.settings.getProperty("server.arguments", "")));
                 if (server.stopping) throw new java.util.concurrent.CancellationException("启动已取消");
-                Process process = new ProcessBuilder(command).directory(server.directory.toFile()).redirectErrorStream(true).start();
+                Process process = org.jackhuang.hmcl.util.platform.DurableProcess.start(new ProcessBuilder(command).directory(server.directory.toFile()).redirectErrorStream(true), server.directory.resolve(".ochre-runtime"));
                 server.session.attach(process);
                 boolean ready = false;
                 try (var reader = process.inputReader(StandardCharsets.UTF_8)) {

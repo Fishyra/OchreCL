@@ -73,6 +73,7 @@ public final class AboutPage extends SpinnerPane implements DecoratorPage {
             about.getContent().setAll(launcher, origin);
         }
 
+        var updater = new com.jfoenix.controls.JFXButton("启动器更新"); updater.setGraphic(SVG.DOWNLOAD.createIcon(20)); updater.setOnAction(event -> OchreUpdatePane.show()); var guide = new com.jfoenix.controls.JFXButton("新手引导"); guide.setGraphic(SVG.INFO.createIcon(20)); guide.setOnAction(event -> org.jackhuang.hmcl.ui.Controllers.dialog(new OchreWelcomePane())); content.getChildren().add(new javafx.scene.layout.FlowPane(12, 8, updater, guide));
         ComponentList environment = new ComponentList();
         {
             var system = new LinePane();

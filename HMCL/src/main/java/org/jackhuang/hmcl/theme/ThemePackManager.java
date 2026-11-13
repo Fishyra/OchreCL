@@ -731,7 +731,7 @@ public final class ThemePackManager {
             return null;
         }
         return switch (brightness.trim().toLowerCase(Locale.ROOT)) {
-            case "light" -> Brightness.LIGHT;
+            case "light", "immersive" -> Brightness.LIGHT;
             case "dark" -> Brightness.DARK;
             default -> null;
         };
@@ -934,7 +934,7 @@ public final class ThemePackManager {
                     null,
                     Themes.getColorScheme().getColor(ColorRole.SURFACE_CONTAINER),
                     opacity);
-            case CUSTOM, NETWORK, DEFAULT -> new ResolvedBackground(
+            case CUSTOM, NETWORK, DEFAULT, BING -> new ResolvedBackground(
                     BackgroundType.BUILTIN,
                     BuiltinBackground.FALLBACK.id(),
                     null,
@@ -961,6 +961,7 @@ public final class ThemePackManager {
         BackgroundType type = Objects.requireNonNullElse(settings().backgroundTypeProperty().get(), BackgroundType.DEFAULT);
         double opacity = currentBackgroundOpacityOrDefault();
         return switch (type) {
+            case BING -> new ResolvedBackground(BackgroundType.BING, null, null, null, null, opacity);
             case DEFAULT -> new ResolvedBackground(
                     BackgroundType.DEFAULT,
                     null,
@@ -1437,6 +1438,7 @@ public final class ThemePackManager {
             case CUSTOM -> new ThemeBackgroundSettings(
                     createCurrentImageBackgroundSource(assets, background),
                     opacity);
+            case BING -> { Path image = BingWallpaper.refresh(); String entry = "assets/wallpapers/bing.jpg"; assets.add(new ThemePackAsset(image, entry)); yield new ThemeBackgroundSettings(new ThemeBackground.Image(entry), opacity); }
             case NETWORK -> new ThemeBackgroundSettings(
                     createCurrentNetworkBackgroundSource(assets, temporaryFiles, background),
                     opacity);

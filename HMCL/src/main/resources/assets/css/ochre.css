@@ -175,3 +175,59 @@
 .ochre-addon-filters .jfx-combo-box { -fx-padding: 4 12; }
 .ochre-addon-filters .jfx-combo-box > .list-cell { -fx-padding: 0 4; -fx-alignment: center-left; }
 .ochre-addon-filters .jfx-text-field { -fx-padding: 8 12; }
+
+/* Beta 0.2 task surfaces retain theme tokens in light and dark modes. */
+.ochre-install-dialog, .ochre-task-menu, .ochre-welcome, .ochre-network-panel {
+    -fx-background-color: -ochre-card;
+    -fx-background-radius: 24;
+    -fx-border-radius: 24;
+}
+.ochre-task-menu { -fx-effect: dropshadow(gaussian, rgba(0,0,0,.18), 20, 0, 0, 6); }
+.ochre-download-list .list-cell { -fx-padding: 3 0; -fx-background-color: transparent; }
+.ochre-download-list .list-cell:filled:hover { -fx-background-color: -ochre-card; -fx-background-radius: 16; }
+.ochre-install-dialog .header-label { -fx-font-size: 20px; }
+.ochre-server-task .jfx-spinner { -fx-pref-width: 22; -fx-pref-height: 22; -fx-max-width: 22; -fx-max-height: 22; }
+.ochre-java-picker { -fx-padding: 4 12; -fx-min-height: 44; -fx-pref-height: 44; }
+.ochre-java-picker > .list-cell { -fx-padding: 0 4; -fx-alignment: center-left; }
+.ochre-install-dialog .label { -fx-text-fill: -ochre-ink; }
+.ochre-install-dialog .task-list-pane { -fx-background-color: transparent; }
+/* A single task surface grows from the floating circle, including its radius and hit area. */
+.ochre-task-menu { -fx-padding: 0; }
+.ochre-task-heading, .ochre-task-name { -fx-font-weight: bold; -fx-text-fill: -ochre-ink; }
+.ochre-task-row { -fx-padding: 10 12; -fx-alignment: center-left; -fx-background-color: -ochre-muted-surface; -fx-background-radius: 12; }
+.ochre-task-row:hover { -fx-background-color: -ochre-selected; }
+.ochre-task-row .svg { -fx-fill: -ochre-ink; }
+.ochre-task-scroll, .ochre-task-scroll > .viewport { -fx-background-color: transparent; }
+.ochre-task-empty { -fx-padding: 20 6; -fx-text-fill: -ochre-muted-ink; }
+
+/* Compact controls keep page content dominant at normal window sizes. */
+.ochre-java-picker { -fx-padding: 2 12; -fx-min-height: 40; -fx-pref-height: 40; -fx-max-height: 40; }
+.ochre-java-picker > .list-cell { -fx-padding: 4 0; -fx-alignment: center-left; }
+.ochre-addon-filters .combo-box { -fx-padding: 2 10; -fx-background-color: -ochre-muted-surface; -fx-background-radius: 10; }
+.ochre-addon-filters .combo-box > .list-cell { -fx-padding: 2 0; -fx-alignment: center-left; }
+.ochre-addon-filters .jfx-text-field { -fx-padding: 5 10; }
+.ochre-orbit-track { -fx-stroke: -ochre-ink; -fx-opacity: .2; }
+.ochre-step-row { -fx-padding: 8 10; -fx-background-radius: 10; }
+.ochre-step-row:active { -fx-background-color: -ochre-selected; }
+.ochre-step-caption { -fx-font-size: 11px; -fx-opacity: .7; }
+.ochre-java-picker { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 12; -fx-background-insets: 0; -fx-border-width: 0; }
+.ochre-java-picker > .list-cell { -fx-background-color: transparent; -fx-text-fill: -ochre-ink; }
+.ochre-java-picker .arrow-button, .ochre-addon-filters .arrow-button { -fx-background-color: transparent; }
+.ochre-java-picker .arrow, .ochre-addon-filters .arrow { -fx-background-color: -ochre-ink; }
+.ochre-address-picker .combo-box { -fx-background-color: -ochre-muted-surface; -fx-background-insets: 0; -fx-background-radius: 10; -fx-padding: 4 6; }
+.ochre-address-picker .combo-box > .list-cell { -fx-padding: 2 0; -fx-text-fill: -ochre-ink; -fx-background-color: transparent; }
+.ochre-address-picker .jfx-button { -fx-padding: 4; }
+.ochre-game-options .check-box { -fx-text-fill: -ochre-ink; }
+.ochre-network-panel .text-area { -fx-background-radius: 14; }
+
+/* First-run directory import: cards and a real vector plus live inside one list. */
+.ochre-import-library { -fx-background-color: -ochre-card; -fx-background-radius: 22; -fx-border-color: -ochre-muted-surface; -fx-border-radius: 22; -fx-border-width: 1; }
+.ochre-import-scroll, .ochre-import-scroll > .viewport { -fx-background-color: transparent; }
+.ochre-import-directory { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 12; -fx-padding: 12 14; -fx-text-fill: -ochre-ink; }
+.ochre-import-directory:selected { -fx-background-color: -ochre-selected; }
+.ochre-import-name { -fx-font-size: 13px; -fx-font-weight: bold; }
+.ochre-import-add { -fx-background-color: transparent; -fx-background-radius: 12; -fx-border-color: -ochre-muted-surface; -fx-border-style: segments(4, 4); -fx-border-radius: 12; -fx-border-width: 1; -fx-padding: 8 10; -fx-text-fill: -ochre-ink; }
+.ochre-import-plus { -fx-background-color: -ochre-action; -fx-background-radius: 999; }
+.ochre-import-plus .svg { -fx-fill: -ochre-action-ink; }
+.ochre-import-add:hover { -fx-background-color: -ochre-selected; }
+.ochre-welcome-palette { -fx-fill: -ochre-muted-surface; -fx-stroke: -ochre-ink; -fx-stroke-width: 2; }

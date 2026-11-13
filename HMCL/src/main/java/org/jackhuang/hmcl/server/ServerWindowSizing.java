@@ -16,6 +16,8 @@ import org.jetbrains.annotations.Nullable;
 public final class ServerWindowSizing {
     /// Native-window property storing bounds before this server workspace enlarged it.
     private static final String ORIGINAL = ServerWindowSizing.class.getName() + ".original";
+    /// Persisted normal preference captured before any automatic server resizing.
+    private static final String PREFERENCE = ServerWindowSizing.class.getName() + ".preference";
     /// Active native bounds transition shared across server pages on the same window.
     private static final String MOTION = ServerWindowSizing.class.getName() + ".motion";
     /// Last navigation target, guarding delayed growth during page transition animations.
@@ -37,6 +39,22 @@ public final class ServerWindowSizing {
             var target = restored(centerX, centerY, before.getWidth(), before.getHeight(), screen);
             animate(stage, target, true);
         });
+    }
+    /// Carries temporary normal geometry across theme-driven native stage replacement.
+    public static void transfer(javafx.stage.Stage previous, javafx.stage.Stage replacement) {
+        if (previous.getProperties().get(MOTION) instanceof BoundsTransition motion) { motion.stop(); motion.reset(); }
+        if (previous.getProperties().get(ORIGINAL) instanceof Rectangle2D bounds) replacement.getProperties().put(ORIGINAL, bounds);
+        if (previous.getProperties().containsKey(PREFERENCE)) replacement.getProperties().put(PREFERENCE, previous.getProperties().get(PREFERENCE));
+        if (previous.getProperties().containsKey(ACTIVE_PAGE)) replacement.getProperties().put(ACTIVE_PAGE, previous.getProperties().get(ACTIVE_PAGE));
+    }
+    /// Preserves the user's normal startup dimensions even when the launcher closes on a server page.
+    public static void restoreSavedPreference(@Nullable Window window) {
+        if (window == null || !(window.getProperties().get(PREFERENCE) instanceof Rectangle2D bounds)) return;
+        var state = org.jackhuang.hmcl.setting.SettingsManager.state(); state.setX(bounds.getMinX()); state.setY(bounds.getMinY()); state.setWidth(bounds.getWidth()); state.setHeight(bounds.getHeight());
+    }
+    /// Returns true while server-only geometry must not overwrite the normal saved size.
+    public static boolean hasTemporaryBounds(@Nullable Window window) {
+        return window != null && window.getProperties().containsKey(ORIGINAL);
     }
     /// Restores the saved size around the current center while fitting the current display.
     static Rectangle2D restored(double centerX, double centerY, double width, double height, Rectangle2D screen) {
@@ -86,6 +104,8 @@ public final class ServerWindowSizing {
         Rectangle2D bounds = (screens.isEmpty() ? Screen.getPrimary() : screens.get(0)).getVisualBounds();
         Rectangle2D target = centered(stage.getX(), stage.getY(), width, height, bounds);
         if (target.getWidth() <= width + 1 && target.getHeight() <= height + 1) return;
+        var preference = org.jackhuang.hmcl.setting.SettingsManager.state();
+        stage.getProperties().putIfAbsent(PREFERENCE, new Rectangle2D(preference.getX(), preference.getY(), preference.getWidth(), preference.getHeight()));
         stage.getProperties().putIfAbsent(ORIGINAL, new Rectangle2D(stage.getX(), stage.getY(), width, height));
         animate(stage, target, false);
     }
@@ -97,7 +117,7 @@ public final class ServerWindowSizing {
             if (stage.getProperties().get(MOTION) != motion) return;
             stage.getProperties().remove(MOTION);
             motion.reset();
-            if (restoring) stage.getProperties().remove(ORIGINAL);
+            if (restoring) { stage.getProperties().remove(ORIGINAL); stage.getProperties().remove(PREFERENCE); }
         });
         motion.play();
     }

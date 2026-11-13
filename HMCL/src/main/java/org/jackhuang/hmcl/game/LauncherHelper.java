@@ -241,6 +241,8 @@ public final class LauncherHelper {
                 })
                 .thenComposeAsync(() -> logIn(account).withStage("launch.state.logging_in"))
                 .thenComposeAsync(authInfo -> Task.supplyAsync(() -> {
+                    try { @Nullable String bridge = org.jackhuang.hmcl.bridge.BridgeManager.prepare(gameInstance); if (bridge != null) javaAgents.add(bridge); }
+                    catch (Exception error) { org.jackhuang.hmcl.util.logging.Logger.LOG.warning("Optional game bridge was not attached", error); }
                     LaunchOptions.Builder launchOptionsBuilder = gameInstance.getLaunchOptions(
                             context.javaRuntime,
                             context.javaExecutable,

@@ -489,3 +489,13 @@ tasks.register<UpdateAddonProjectInfos>("updateModpackProjectInfos") {
     outputFile.set(layout.projectDirectory.file("src/main/resources/assets/addon/modpack.csv"))
     projectType.set(UpdateAddonProjectInfos.AddonProjectType.MODPACK)
 }
+
+// Keep every test class away from real launcher accounts, wallpaper caches and preferences.
+tasks.withType<Test>().configureEach {
+    val isolatedWork = layout.buildDirectory.dir("isolated-test-data/work").get().asFile
+    workingDir(isolatedWork)
+    doFirst { isolatedWork.mkdirs() }
+    systemProperty("user.home", layout.buildDirectory.dir("isolated-test-data/user").get().asFile.absolutePath)
+    systemProperty("hmcl.dir", layout.buildDirectory.dir("isolated-test-data/local").get().asFile.absolutePath)
+    systemProperty("hmcl.home", layout.buildDirectory.dir("isolated-test-data/home").get().asFile.absolutePath)
+}

@@ -1,0 +1,5 @@
+Replacement built-in wallpapers supplied by the project owner on 2026-11-13.
+star-trails.jpg: wallhaven-p8j83m.jpg
+sunset.png: wallhaven-8o2d9k.png
+jungle.png: wallhaven-o3gdo9.png
+Original Wallhaven identifiers retained for source attribution. No additional license grant is implied.

@@ -23,5 +23,8 @@ public enum BackgroundType {
     PAINT,
 
     /// Uses the current theme color scheme surface container as a flat background.
-    THEME_COLOR;
+    THEME_COLOR,
+
+    /// Uses Bing’s daily image with its public attribution and a local offline cache.
+    BING;
 }

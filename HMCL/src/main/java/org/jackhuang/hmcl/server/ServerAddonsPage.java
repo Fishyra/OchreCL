@@ -23,17 +23,19 @@ import java.util.*;
 @NotNullByDefault
 public final class ServerAddonsPage extends BorderPane {
     /// Target version and loader are always derived from this installed server.
-    private final ComboBox<ServerInstance> target = new JFXComboBox<>();
+    private final ComboBox<ServerInstance> target = new ComboBox<>();
     /// Query and optional category facet.
     private final TextField query = new JFXTextField();
     /// Server-compatible categories supplied by Modrinth.
-    private final ComboBox<String> category = new JFXComboBox<>();
+    private final ComboBox<String> category = new ComboBox<>();
     /// Provider sort order shown with translated captions.
-    private final ComboBox<String> sort = new JFXComboBox<>();
+    private final ComboBox<String> sort = new ComboBox<>();
     /// Current results or project detail surface.
     private VBox body = new VBox(10);
     /// Holds previous and incoming result/detail pages until their slide transition settles.
     private final TransitionPane pages = new TransitionPane();
+    /// Shares the standard download loading and error animation.
+    private final org.jackhuang.hmcl.ui.construct.SpinnerPane loading = new org.jackhuang.hmcl.ui.construct.SpinnerPane();
     /// Current page and empty/error status.
     private final Label status = new Label("选择服务器后搜索插件与服务端模组");
     /// Result paging position.
@@ -51,11 +53,11 @@ public final class ServerAddonsPage extends BorderPane {
         query.setPromptText("搜索插件与服务端模组"); category.getItems().setAll("全部", "实用工具", "性能优化", "管理", "世界生成", "科技", "冒险"); category.setValue("全部");
         sort.getItems().setAll("相关度", "下载量", "关注数", "最近更新", "最新发布"); sort.setValue("相关度");
         JFXButton search = button("搜索", () -> { page = 0; search(); }); query.setOnAction(event -> search.fire());
-        GridPane filters = new GridPane(); filters.setHgap(12); filters.setVgap(10); filters.setPadding(new Insets(14)); filters.getStyleClass().add("ochre-server-controls");
+        GridPane filters = new GridPane(); filters.setHgap(10); filters.setVgap(8); filters.setPadding(new Insets(10)); filters.getStyleClass().add("ochre-server-controls");
         filters.getStyleClass().add("ochre-addon-filters");
         for (Region control : new Region[]{target, query, category, sort}) {
             control.setMinWidth(0); control.setMaxWidth(Double.MAX_VALUE);
-            control.setMinHeight(40); control.setPrefHeight(40); control.setMaxHeight(40);
+            control.setMinHeight(34); control.setPrefHeight(34); control.setMaxHeight(34);
         }
         arrangeFilters(filters);
         filters.widthProperty().addListener((observable, before, after) -> arrangeFilters(filters));
@@ -63,32 +65,29 @@ public final class ServerAddonsPage extends BorderPane {
         var paging = new FlowPane(8, 8, button("第一页", () -> change(0)), button("上一页", () -> change(Math.max(0, page - 1))), button("下一页", () -> change(page + 1)), button("最后一页", () -> change(Math.max(0, (total - 1) / 20))), search);
         paging.setAlignment(Pos.CENTER_LEFT);
         VBox header = new VBox(10, filters, status, paging); header.setMinWidth(0); header.setPadding(new Insets(0, 0, 12, 0)); setTop(header);
-        pages.setMinSize(0, 0); setCenter(pages); showBody(body, true);
+        pages.setMinSize(0, 0); loading.setContent(pages); loading.setOnFailedAction(event -> search()); setCenter(loading); showBody(body, true);
         target.valueProperty().addListener((observable, old, value) -> { page = 0; search(); });
         if (target.getValue() != null) search();
     }
     /// Reflows label/control pairs at a width breakpoint, keeping feedback outside the sizing grid.
     private void arrangeFilters(GridPane filters) {
-        boolean wide = filters.getWidth() >= 620;
-        int columns = wide ? 4 : 2;
+        int columns = filters.getWidth() >= 850 ? 4 : filters.getWidth() >= 480 ? 2 : 1;
         if (filters.getColumnConstraints().size() == columns) return;
         filters.getChildren().clear(); filters.getColumnConstraints().clear();
-        for (int i = 0; i < columns; i++) {
-            ColumnConstraints column = new ColumnConstraints();
-            if (i % 2 == 0) { column.setMinWidth(Region.USE_PREF_SIZE); column.setPrefWidth(58); }
-            else { column.setMinWidth(0); column.setPrefWidth(0); column.setHgrow(Priority.ALWAYS); column.setFillWidth(true); }
-            filters.getColumnConstraints().add(column);
+        for (int i = 0; i < columns; i++) { ColumnConstraints column = new ColumnConstraints(); column.setMinWidth(0); column.setPercentWidth(100.0 / columns); column.setHgrow(Priority.ALWAYS); filters.getColumnConstraints().add(column); }
+        int index = 0;
+        for (var control : java.util.List.of(target, query, category, sort)) {
+            control.setAccessibleText(index == 0 ? "服务器" : index == 1 ? "名称" : index == 2 ? "类别" : "排序");
+            filters.add(control, index % columns, index / columns); index++;
         }
-        // Equal growing columns share the width left after the fixed labels and gaps.
-        filters.add(new Label("服务器"), 0, 0); filters.add(target, 1, 0, wide ? 3 : 1, 1);
-        filters.add(new Label("名称"), 0, 1); filters.add(query, 1, 1);
-        filters.add(new Label("类别"), wide ? 2 : 0, wide ? 1 : 2); filters.add(category, wide ? 3 : 1, wide ? 1 : 2);
-        filters.add(new Label("排序"), 0, wide ? 2 : 3); filters.add(sort, 1, wide ? 2 : 3);
-        for (Node node : filters.getChildren()) if (node instanceof Label label) label.setMinWidth(Region.USE_PREF_SIZE);
     }
     /// Gives each page its own scroll surface so the outgoing list stays intact during motion.
     private void showBody(VBox next, boolean forward) {
         body = next;
+        if (next.getStyleClass().contains("ochre-download-results")) {
+            ServerDownloadList list = new ServerDownloadList(); list.getItems().setAll(next.getChildren());
+            pages.setContent(list, forward ? ContainerAnimations.SWIPE_LEFT : ContainerAnimations.SWIPE_RIGHT); return;
+        }
         ScrollPane scroll = new ScrollPane(next); scroll.setFitToWidth(true); scroll.setMinSize(0, 0);
         pages.setContent(scroll, forward ? ContainerAnimations.SWIPE_LEFT : ContainerAnimations.SWIPE_RIGHT);
     }
@@ -98,17 +97,17 @@ public final class ServerAddonsPage extends BorderPane {
     private void search() { search(true); }
     /// Loads results while retaining the preceding page, then animates in the requested paging direction.
     private void search(boolean forward) {
-        long request = ++generation; @Nullable ServerInstance server = target.getValue();
+        loading.hideSpinner(); long request = ++generation; @Nullable ServerInstance server = target.getValue();
         if (server == null) { status.setText("请先选择服务器"); showBody(new VBox(10), forward); return; }
         if (ServerAddons.loader(server).equals("vanilla")) { status.setText("原版核心不支持插件或模组，请选择 Paper、Fabric 或 Forge 服务器"); showBody(new VBox(10), forward); return; }
         String term = query.getText(), facet = switch (category.getValue()) { case "实用工具" -> "utility"; case "性能优化" -> "optimization"; case "管理" -> "management"; case "世界生成" -> "worldgen"; case "科技" -> "technology"; case "冒险" -> "adventure"; default -> ""; };
         String index = switch (sort.getValue()) { case "下载量" -> "downloads"; case "关注数" -> "follows"; case "最近更新" -> "updated"; case "最新发布" -> "newest"; default -> "relevance"; }; int requestedPage = page;
-        status.setText("正在搜索 · Minecraft " + server.settings.getProperty("version"));
+        loading.showSpinner(); status.setText("正在搜索 · Minecraft " + server.settings.getProperty("version"));
         Schedulers.io().execute(() -> {
             try {
                 var result = ServerAddons.search(server, term, facet, index, requestedPage);
-                Platform.runLater(() -> { if (request != generation) return; total = result.total(); status.setText((page + 1) + " / " + Math.max(1, (total + 19) / 20) + " 页 · " + total + " 项");
-                    VBox next = new VBox(10);
+                Platform.runLater(() -> { if (request != generation) return; loading.hideSpinner(); total = result.total(); status.setText((page + 1) + " / " + Math.max(1, (total + 19) / 20) + " 页 · " + total + " 项");
+                    VBox next = new VBox(10); next.getStyleClass().add("ochre-download-results");
                     for (var project : result.projects()) next.getChildren().add(projectRow(project, () -> details(project, server)));
                     if (result.projects().isEmpty()) next.getChildren().add(new Label("没有与此服务器版本和核心兼容的项目"));
                     showBody(next, forward);
@@ -118,12 +117,12 @@ public final class ServerAddonsPage extends BorderPane {
     }
     /// Opens a version-grouped project page while retaining the selected server target.
     private void details(ServerAddons.Project project, ServerInstance server) {
-        long request = ++generation; VBox detail = new VBox(10); detail.getChildren().setAll(button("返回搜索结果", () -> search(false)), projectRow(project, () -> FXUtils.openLink("https://modrinth.com/project/" + project.slug())), new Label("正在获取版本…")); showBody(detail, true);
+        loading.showSpinner(); long request = ++generation; VBox detail = new VBox(10); detail.getChildren().setAll(button("返回搜索结果", () -> search(false)), projectRow(project, () -> FXUtils.openLink("https://modrinth.com/project/" + project.slug())), new Label("正在获取版本…")); showBody(detail, true);
         Schedulers.io().execute(() -> {
             try {
                 var versions = ServerAddons.versions(project);
                 Platform.runLater(() -> {
-                    if (request != generation) return;
+                    if (request != generation) return; loading.hideSpinner();
                     detail.getChildren().remove(detail.getChildren().size() - 1);
                     VBox compatible = new VBox(8); Map<String, List<ServerAddons.Version>> groups = new LinkedHashMap<>();
                     for (var version : versions) {
@@ -164,19 +163,18 @@ public final class ServerAddonsPage extends BorderPane {
     }
     /// Renders a project with a proportional icon, category tags and bounded description.
     private Node projectRow(ServerAddons.Project project, Runnable action) {
-        Label title = new Label(project.title() + "   " + String.join(" · ", project.categories())); title.setWrapText(true);
-        Label description = new Label(project.description()); description.setWrapText(true); description.setMaxHeight(48);
-        VBox text = new VBox(5, title, description); HBox.setHgrow(text, Priority.ALWAYS);
-        HBox row = new HBox(12, text); row.setPadding(new Insets(14)); row.getStyleClass().add("ochre-server-controls");
-        if (project.icon().startsWith("https://")) { ImageView icon = new ImageView(new Image(project.icon(), 56, 56, true, true, true)); icon.setFitWidth(56); icon.setFitHeight(56); icon.setPreserveRatio(true); row.getChildren().add(0, icon); }
-        row.setOnMouseClicked(event -> action.run()); row.setCursor(javafx.scene.Cursor.HAND); return row;
+        var text = new org.jackhuang.hmcl.ui.construct.TwoLineListItem(); text.setTitle(project.title()); text.setSubtitle(project.description()); text.setMinWidth(0); HBox.setHgrow(text, Priority.ALWAYS);
+        for (String category : project.categories()) { Label tag = new Label(category); tag.getStyleClass().add("ochre-instance-tag"); text.getTags().add(tag); }
+        HBox row = new HBox(12, text, org.jackhuang.hmcl.ui.SVG.ARROW_FORWARD.createIcon(22)); row.setAlignment(Pos.CENTER_LEFT); row.setPadding(new Insets(12, 16, 12, 16)); row.getStyleClass().add("md-list-cell");
+        if (project.icon().startsWith("https://")) { ImageView icon = new ImageView(new Image(project.icon(), 48, 48, true, true, true)); icon.setFitWidth(48); icon.setFitHeight(48); icon.setPreserveRatio(true); row.getChildren().add(0, icon); }
+        var ripple = new org.jackhuang.hmcl.ui.construct.RipplerContainer(row); ripple.setOnAction(event -> action.run()); ripple.setCursor(javafx.scene.Cursor.HAND); ripple.setFocusTraversable(true); ripple.setOnKeyPressed(event -> { if (event.getCode() == javafx.scene.input.KeyCode.ENTER || event.getCode() == javafx.scene.input.KeyCode.SPACE) { action.run(); event.consume(); } }); return ripple;
     }
     /// Renders an exact, selectable release without silently choosing the latest file.
     private Node versionRow(ServerAddons.Version version, Runnable action) {
         JFXButton row = button(version.name() + "  ·  " + version.channel() + "\n" + version.published(), action); row.setWrapText(true); row.setMaxWidth(Double.MAX_VALUE); row.setPadding(new Insets(16)); row.getStyleClass().add("ochre-server-controls"); return row;
     }
     /// Reports only the current request's failure and keeps navigation usable.
-    private void fail(long request, Exception exception) { Platform.runLater(() -> { if (request == generation) status.setText("获取失败：" + exception.getMessage()); }); }
+    private void fail(long request, Exception exception) { Platform.runLater(() -> { if (request == generation) { loading.setLoading(false); loading.setFailedReason("获取失败：" + exception.getMessage()); status.setText("获取失败，请重试"); } }); }
     /// Creates launcher-styled actions with explicit handlers.
     private static JFXButton button(String label, Runnable action) { JFXButton button = new JFXButton(label); button.setOnAction(event -> action.run()); return button; }
 }

@@ -8,3 +8,5 @@
 - OpenJFX：https://github.com/openjdk/jfx 。发行包保留其许可与例外声明。
 - Azul Zulu OpenJDK：https://www.azul.com/downloads/ 。发行包内 runtime/legal 保留对应许可。
 - 其他依赖的许可与来源继续通过上游依赖声明、源码头和关于页面保留。
+
+- 本轮内置壁纸由 Fishyra 提供，来源标识保留在 `HMCL/src/main/resources/assets/img/wallpapers/OCHRE-WALLPAPERS.txt`。

@@ -35,10 +35,13 @@ public final class StyleSheets {
                 getThemeStyleSheet(),
                 getBrightnessStyleSheet(),
                 "/assets/css/root.css",
-                "/assets/css/ochre.css"
+                "/assets/css/ochre.css",
+                getGlassStyleSheet()
         };
         stylesheets = FXCollections.observableList(Arrays.asList(array));
 
+        SettingsManager.settings().themeBrightnessModeProperty().addListener(ignored -> { stylesheets.set(THEME_STYLE_SHEET_INDEX, getThemeStyleSheet()); stylesheets.set(5, getGlassStyleSheet()); });
+        SettingsManager.settings().getThemeAppearanceOverrides().addListener((javafx.beans.InvalidationListener) ignored -> { stylesheets.set(THEME_STYLE_SHEET_INDEX, getThemeStyleSheet()); stylesheets.set(5, getGlassStyleSheet()); });
         FontManager.fontProperty().addListener(o -> stylesheets.set(FONT_STYLE_SHEET_INDEX, getFontStyleSheet()));
         Themes.colorSchemeProperty().addListener(o -> {
             stylesheets.set(THEME_STYLE_SHEET_INDEX, getThemeStyleSheet());
@@ -99,6 +102,9 @@ public final class StyleSheets {
 
         return toStyleSheetUri(builder.toString());
     }
+
+    /// Installs all glass control overrides together, removing them completely when the mode is left.
+    private static String getGlassStyleSheet() { return org.jackhuang.hmcl.theme.ImmersiveAppearance.isEnabled() ? "/assets/css/ochre-glass.css" : toStyleSheetUri("/* normal appearance */"); }
 
     private static String getBrightnessStyleSheet() {
         return Themes.getColorScheme().getBrightness() == Brightness.LIGHT

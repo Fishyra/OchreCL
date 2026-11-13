@@ -48,7 +48,35 @@ public final class RuntimeSession {
     public RuntimeSession() {}
 
     /// Gets the stable session for one installed game instance.
-    public static RuntimeSession game(String key) { return games.computeIfAbsent(key, ignored -> new RuntimeSession()); }
+    public static RuntimeSession game(String key) { return games.computeIfAbsent(key, ignored -> { RuntimeSession session = new RuntimeSession(); session.recover(gameDirectory(key)); return session; }); }
+    /// Uses the same stable instance key as the core launcher's independent supervisor.
+    private static java.nio.file.Path gameDirectory(String key) { return org.jackhuang.hmcl.Metadata.HMCL_LOCAL_HOME.resolve("ochre-runtime").resolve(java.util.UUID.nameUUIDFromBytes(key.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()); }
+    /// Reattaches a validated owned process and resumes its persisted console on a background reader.
+    public void recover(java.nio.file.Path directory) {
+        var recovered = org.jackhuang.hmcl.util.platform.DurableProcess.reconnect(directory);
+        if (recovered.isEmpty()) {
+            try { var file = directory.resolve("console.log"); if (java.nio.file.Files.isRegularFile(file)) { try (var log = new java.io.RandomAccessFile(file.toFile(), "r")) { log.seek(Math.max(0, log.length() - 180000)); byte[] bytes = new byte[(int) (log.length() - log.getFilePointer())]; log.readFully(bytes); for (String line : new String(bytes, java.nio.charset.StandardCharsets.UTF_8).split("\\R")) append(line); } } } catch (java.io.IOException ignored) { }
+            return;
+        }
+        Process child = recovered.get(); attach(child); started = child.info().startInstant().orElse(Instant.now()); status("运行中 · 已重新接管");
+        org.jackhuang.hmcl.task.Schedulers.io().execute(() -> {
+            try (var reader = child.inputReader(java.nio.charset.StandardCharsets.UTF_8)) { @Nullable String line; while ((line = reader.readLine()) != null) append(line); child.waitFor(); if (process == child) status(wasStopRequested() || child.exitValue() == 0 ? "已停止" : "异常退出"); }
+            catch (Exception error) { if (error instanceof InterruptedException) Thread.currentThread().interrupt(); }
+        });
+    }
+    /// Lists currently owned game tasks without exposing mutable registry state.
+    public static java.util.@org.jetbrains.annotations.Unmodifiable Map<String, RuntimeSession> runningGames() { java.util.Map<String, RuntimeSession> active = new java.util.LinkedHashMap<>(); games.forEach((key, value) -> { if (value.isRunning()) active.put(key, value); }); return java.util.Map.copyOf(active); }
+    /// Resolves the actual game working directory for screenshot/log shortcuts, including isolated instances.
+    public static java.nio.file.Path runDirectory(String key) { try { return java.nio.file.Path.of(java.nio.file.Files.readString(gameDirectory(key).resolve("run.path")).strip()); } catch (Exception ignored) { return java.nio.file.Path.of(key); } }
+    /// Discovers supervised games before the player selects any instance in the UI.
+    public static void restoreGames() {
+        var root = org.jackhuang.hmcl.Metadata.HMCL_LOCAL_HOME.resolve("ochre-runtime");
+        org.jackhuang.hmcl.task.Schedulers.io().execute(() -> {
+            if (!java.nio.file.Files.isDirectory(root)) return;
+            try (var directories = java.nio.file.Files.list(root)) { for (var dir : directories.toList()) { var key = dir.resolve("instance.path"); if (java.nio.file.Files.isRegularFile(key)) game(java.nio.file.Files.readString(key).strip()); } }
+            catch (java.io.IOException ignored) { }
+        });
+    }
     /// Finds a game already running under this launcher for server Quick Play handoff.
     public static java.util.Optional<RuntimeSession> activeGame() { return games.values().stream().filter(RuntimeSession::isRunning).findFirst(); }
     /// Associates an actual launched process and resets its console for this run.
