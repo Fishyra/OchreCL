@@ -14,19 +14,20 @@
 - 服务器控制台、配置、玩家管理、附加项安装与备份。
 - SFTP 与 OpenFrp 接入；工具安装需要玩家明确选择，穿透服务需要自行配置账号/节点。
 
-## 0.3.0-alpha.1
+## 0.3.0-alpha.2
 
-[下载完整安装包](https://fishyra.github.io/ochrecl/#download) · [发布说明](https://github.com/Fishyra/OchreCL/releases/tag/v0.3.0-alpha.1)
+[下载完整安装包](https://fishyra.github.io/ochrecl/#download) · [发布说明](https://github.com/Fishyra/OchreCL/releases/tag/v0.3.0-alpha.2)
 
-新增可选的 26.x 游戏桥接、GitHub 更新器、四步首次启动引导、服务器导入、网络检测与地址选择。修复任务悬浮球、实例 Java 选择、沉浸式背景与附加项筛选布局。[详细变化与验证](docs/OCHRE_03_RELEASE.md)
+新增可选的 26.x 游戏桥接、GitHub 更新器、四步首次启动引导、服务器导入、网络检测与地址选择。修复任务悬浮球、实例 Java 选择、沉浸式背景与附加项筛选布局。[详细变化与验证](docs/OCHRE_ALPHA2.md)
 
 | 平台 | 状态 |
 | --- | --- |
 | macOS Apple Silicon | DMG 内置 Java/JavaFX；macOS 与 26.2 原版游戏桥接实测；未进行 Apple 开发者签名与公证 |
 | Windows x64 | ZIP 便携测试包；完成包结构、校验检查，尚未原生实测 |
+| macOS Intel x86_64 | 新增交叉装配 DMG，完成架构/结构检查，尚未 Intel 原生实测 |
 | Linux x64 glibc | TAR.GZ 桌面便携测试包；需 GTK 3，尚未原生实测 |
 
-26.x 是桥接目标家族，目前只原生验证了 26.2；其他版本按实际能力返回结果。安装桥接需玩家逐实例授权并重启游戏。脚本页仅保存草稿，目前不执行脚本。微软登录需要配置项目自己的有效 Client ID，参见[注册说明](docs/OCHRE_MICROSOFT_LOGIN.md)。
+26.x 是桥接目标家族，目前只原生验证了 26.2；其他版本按实际能力返回结果。安装桥接需玩家逐实例授权并重启游戏。脚本运行器现支持英文大括号语法、条件循环、按次授权和停止；编辑器支持配对、缩进、注释及查找。[脚本指南](docs/OCHRE_SCRIPT.md)。移动/攻击等仍需世界内端到端验证，寻路与精确手臂定位尚不可用。微软登录需要配置项目自己的有效 Client ID，参见[注册说明](docs/OCHRE_MICROSOFT_LOGIN.md)。
 
 关于 → 启动器更新使用本仓库的 GitHub Releases 和 SHA-256 校验。旧版需先安装完整 0.3 包，之后可通过更新 JAR 升级；Java/JavaFX 变化仍需完整安装包。[桥接说明](docs/OCHRE_BRIDGE.md)
 

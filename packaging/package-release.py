@@ -4,7 +4,7 @@ from pathlib import Path
 import hashlib, json, os, plistlib, shutil, subprocess, zipfile
 
 BASE = Path(__file__).resolve().parents[1]
-VERSION = os.environ.get('OCHRE_RELEASE_VERSION', '0.3.0-alpha.1')
+VERSION = os.environ.get('OCHRE_RELEASE_VERSION', '0.2.0-beta.2')
 JDK = Path('/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home')
 MAC_RUNTIME = Path(os.environ.get('OCHRE_MAC_RUNTIME', str(JDK)))
 OUT = BASE / 'builds' / VERSION
@@ -42,7 +42,7 @@ def main():
     macout = WORK/'mac-image'; macout.mkdir(exist_ok=True)
     app = macout/'OchreCL.app'
     if not app.exists():
-        command = [str(JDK/'bin/jpackage'), '--type','app-image','--name','OchreCL','--app-version','1.3.1',
+        command = [str(JDK/'bin/jpackage'), '--type','app-image','--name','OchreCL','--app-version','1.3.2',
                    '--mac-package-identifier','io.fishyra.ochrecl','--vendor','Fishyra',
                    '--input',str(inputs),'--main-jar','desktop-bootstrap.jar','--main-class','io.ochrecl.bootstrap.DesktopLauncher',
                    '--dest',str(macout),'--icon',str(BASE/'branding/ochre.icns'),

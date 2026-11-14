@@ -10,6 +10,6 @@ resource=root/'HMCL/src/main/resources/assets/bridge/OchreBridge.jar';resource.p
 if resource.exists() and resource.stat().st_mtime>max(p.stat().st_mtime for p in sources):raise SystemExit(0)
 subprocess.run([str(java),'--release','17','-encoding','UTF-8','-d',str(classes),*[str(p) for p in sources]],check=True)
 with zipfile.ZipFile(resource,'w',zipfile.ZIP_DEFLATED) as output:
- output.writestr('META-INF/MANIFEST.MF','Manifest-Version: 1.0\r\nPremain-Class: io.ochre.bridge.BridgeAgent\r\nImplementation-Version: 0.1.0-alpha\r\n\r\n')
+ output.writestr('META-INF/MANIFEST.MF','Manifest-Version: 1.0\r\nPremain-Class: io.ochre.bridge.BridgeAgent\r\nImplementation-Version: 0.2.0-alpha\r\n\r\n')
  for p in sorted(classes.rglob('*.class')):output.write(p,p.relative_to(classes).as_posix())
 print('Built optional OchreBridge agent:',hashlib.sha256(resource.read_bytes()).hexdigest())

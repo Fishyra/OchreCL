@@ -99,3 +99,5 @@ language-subtag-registry
 /bridge/build/
 /linux-cache/
 **/__pycache__/
+
+/macos-intel-cache/

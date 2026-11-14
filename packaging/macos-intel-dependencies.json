@@ -1,0 +1,30 @@
+[
+  {
+    "name": "zulu17.70.113-ca-jdk17.0.21.0.3-macosx_x64.tar.gz",
+    "url": "https://cdn.azul.com/zulu/bin/zulu17.70.113-ca-jdk17.0.21.0.3-macosx_x64.tar.gz",
+    "sha256": "6de9a31bd21c09b787781ce90d5791168b522c2213571d742141e610b81ff7fd"
+  },
+  {
+    "name": "zulu17.70.113-ca-jre17.0.21.0.3-macosx_x64.tar.gz",
+    "url": "https://cdn.azul.com/zulu/bin/zulu17.70.113-ca-jre17.0.21.0.3-macosx_x64.tar.gz",
+    "sha256": "362a6c8ae059c3d7080f9c14b133bd317626d38e96c7dd98f0bb4632d1e1b637"
+  },
+  {
+    "name": "javafx-base-21.0.8-mac.jar",
+    "url": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-base/21.0.8/javafx-base-21.0.8-mac.jar",
+    "sha1": "ce5cc0a19e2351281e1bf8d1cf798a9743739cfe",
+    "sha256": "14273e778ae6ba4c049d15da4d37ab48d5703a5979ef897272ae8448d79ea0a0"
+  },
+  {
+    "name": "javafx-graphics-21.0.8-mac.jar",
+    "url": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-graphics/21.0.8/javafx-graphics-21.0.8-mac.jar",
+    "sha1": "dd15793df474565ec39def7c645ea88a06073848",
+    "sha256": "bd0e7ed22660e12faff63fa26ca2e846679f0d8a7f05488a17c45a2445dd81b3"
+  },
+  {
+    "name": "javafx-controls-21.0.8-mac.jar",
+    "url": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-controls/21.0.8/javafx-controls-21.0.8-mac.jar",
+    "sha1": "8dd8254e99be91c75c36756bba5c157275e44fa8",
+    "sha256": "a681e8056c4fb022f0590404b068080d408051f7a9a4da7db4f39dcc5ed8a136"
+  }
+]

@@ -25,3 +25,7 @@ Microsoft 登录和 CurseForge 接入的构建凭据从 `MICROSOFT_AUTH_ID` 与 
 Release 中保留 `OchreCL-update.jar` 固定文件名。更新器要求 GitHub 资产提供有效 SHA-256 digest、大小并通过 JAR 检查；旧版先安装带引导器的完整包。
 
 桥接源码位于 `bridge/src/`；协议与能力边界见 `bridge/README.md`。已构建的资源随源码保留，以便与发布包对应；修改组件后必须重建。
+
+## macOS Intel
+
+`packaging/package-macos-intel.py` 使用锁定的官方 Intel JDK 中的 jpackage 启动程序、Intel JRE 与 Intel OpenJFX 替换 ARM 应用布局的全部原生组件。依赖记录在 `packaging/macos-intel-dependencies.json`，把对应文件下载到 `macos-intel-cache` 后运行。所有输入先做 SHA-256 校验，所有二进制只读检查 x86_64，不通过 Rosetta/Wine 运行。需要先生成同版本 ARM 应用布局。当前最低包声明为 macOS 11，仅供测试，尚未在 Intel Mac 原生验证。

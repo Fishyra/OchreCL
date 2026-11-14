@@ -231,3 +231,31 @@
 .ochre-import-plus .svg { -fx-fill: -ochre-action-ink; }
 .ochre-import-add:hover { -fx-background-color: -ochre-selected; }
 .ochre-welcome-palette { -fx-fill: -ochre-muted-surface; -fx-stroke: -ochre-ink; -fx-stroke-width: 2; }
+
+/* Script workspace: remove stock white split-pane and textarea skin surfaces at every layer. */
+.ochre-script-split { -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 0; }
+.ochre-script-split > .split-pane-divider { -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 0 6; }
+.ochre-script-split > .split-pane-divider > .vertical-grabber { -fx-background-color: transparent; -fx-shape: null; }
+.ochre-script-library { -fx-background-color: -ochre-card; -fx-background-radius: 18; }
+.ochre-script-list, .ochre-script-list > .virtual-flow, .ochre-script-list .list-cell { -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 4; }
+.ochre-script-list .list-cell { -fx-background-radius: 10; -fx-padding: 8; -fx-text-fill: -ochre-ink; }
+.ochre-script-list .list-cell:selected { -fx-background-color: -ochre-selected; }
+.ochre-script-editor, .ochre-script-console { -fx-background-color: -ochre-card; -fx-background-radius: 18; -fx-border-color: transparent; -fx-border-width: 0; -fx-padding: 10; -fx-text-fill: -ochre-ink; -fx-highlight-fill: -ochre-selected; }
+.ochre-script-editor > .scroll-pane, .ochre-script-console > .scroll-pane,
+.ochre-script-editor > .scroll-pane > .viewport, .ochre-script-console > .scroll-pane > .viewport,
+.ochre-script-editor .content, .ochre-script-console .content,
+.ochre-script-editor .corner, .ochre-script-console .corner { -fx-background-color: transparent; -fx-background-radius: 14; -fx-border-width: 0; }
+.ochre-script-workspace .check-box { -fx-text-fill: -ochre-ink; }
+
+.ochre-code-editor { -fx-background-color: -ochre-card; -fx-background-radius: 18; }
+.ochre-code-gutter { -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 10 0 10 6; -fx-text-fill: -ochre-muted-ink; -fx-background-radius: 18 0 0 18; }
+.ochre-code-gutter .content, .ochre-code-gutter > .scroll-pane, .ochre-code-gutter .viewport, .ochre-code-gutter .corner { -fx-background-color: transparent; }
+.ochre-code-gutter .scroll-bar { -fx-opacity: 0; -fx-pref-width: 0; -fx-pref-height: 0; }
+
+.ochre-script-library, .ochre-code-editor { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 18; }
+.ochre-script-workspace .ochre-script-editor, .ochre-script-workspace .ochre-script-editor:focused { -fx-background-color: transparent; -fx-border-width: 0; }
+.ochre-script-console { -fx-font-family: "Menlo", "Consolas", monospace; -fx-font-size: 12px; -fx-background-color: -ochre-log; }
+.ochre-script-output > .title { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 12; -fx-padding: 8 12; }
+.ochre-script-output > .content { -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 5 0 0; }
+.ochre-script-output > .title > .text { -fx-fill: -ochre-ink; }
+.ochre-script-output > .title > .arrow-button > .arrow { -fx-background-color: -ochre-ink; }

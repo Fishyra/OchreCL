@@ -1,3 +1,7 @@
+# 0.3.0-alpha.2
+
+英文脚本运行器、圆角代码编辑器、权限与停止机制，以及 macOS Intel 包。见 [完整发布说明](docs/OCHRE_ALPHA2.md) 和 [脚本语言指南](docs/OCHRE_SCRIPT.md)。
+
 # 0.3.0-alpha.1
 
 详见 [发布变化与验证](docs/OCHRE_03_RELEASE.md) 与 [游戏桥接说明](docs/OCHRE_BRIDGE.md)。

@@ -46,12 +46,16 @@ try:
   time.sleep(1)
  else:raise RuntimeError('Bridge did not become ready: '+last)
  assert hello['gameVersion'].startswith('26.2'),hello
+ assert hello['bridgeVersion']=='0.2.0-alpha',hello
+ assert 'script.move' in hello['capabilities'],hello
  invalid=request({'command':'options.set','token':'wrong','option.gamma':'1'});assert invalid['ok']=='false' and invalid['error']=='unauthorized',invalid
  before=request({'command':'options.get'});assert before['ok']=='true',before
  changed=request({'command':'options.set','option.soundCategory_master':'0.33','option.gamma':'0.7','option.fov':'0.25','option.renderDistance':'8'});assert changed.get('applied')=='true',changed
  after=request({'command':'options.get'});assert abs(float(after['soundCategory_master'])-.33)<.001,after;assert abs(float(after['gamma'])-.7)<.001,after;assert float(after['fov'])==.25 and after['renderDistance']=='8',after
  state=request({'command':'state.read'});assert state['ok']=='true' and 'language'in state,state
  unknown=request({'command':'script.execute'});assert unknown['ok']=='false',unknown
+ inventory=request({'command':'script.inventory'});assert inventory['ok']=='false' and inventory['error']=='game.not.in.world',inventory
+ released=request({'command':'script.release','owner':str(uuid.uuid4())});assert released['ok']=='true',released
  report={'game':'26.2','loader':'none / vanilla main','hello':hello,'before':before,'after':after,'state':state,'unauthorizedRejected':True,'unknownCommandRejected':True,'gameDirectory':str(work)}
  (root/'bridge/build/native-smoke.json').write_text(json.dumps(report,ensure_ascii=False,indent=2));print('PASS: loader-free 26.2 handshake, real settings read/write, auth and unsupported-command rejection');print('Isolated logs:',work)
 finally:

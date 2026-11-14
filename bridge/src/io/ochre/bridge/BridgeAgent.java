@@ -61,8 +61,8 @@ public final class BridgeAgent {
     private static Map<String, String> onGameThread(Object client, Map<String, String> request) throws Exception {
         ClassLoader loader = client.getClass().getClassLoader(); Class<?> constants = Class.forName("net.minecraft.SharedConstants", false, loader); Object version = constants.getMethod("getCurrentVersion").invoke(null); String game = String.valueOf(call(version, "name"));
         if (!game.matches("26\\..*")) throw new IOException("game.version.unsupported");
-        Object options = client.getClass().getField("options").get(client); Map<String, String> response = new LinkedHashMap<>(); response.put("gameVersion", game); response.put("bridgeVersion", "0.1.0-alpha");
-        StringBuilder capabilities = new StringBuilder("state.read");
+        Object options = client.getClass().getField("options").get(client); Map<String, String> response = new LinkedHashMap<>(); response.put("gameVersion", game); response.put("bridgeVersion", "0.2.0-alpha");
+        StringBuilder capabilities = new StringBuilder("state.read,script.inventory,script.players,script.look,script.move,script.hit,script.release");
         for (String name : OPTIONS) try { option(options, name); capabilities.append(',').append("option.").append(name); } catch (ReflectiveOperationException ignored) { }
         response.put("capabilities", capabilities.toString());
         String command = request.getOrDefault("command", "hello");
@@ -82,10 +82,11 @@ public final class BridgeAgent {
             }
             case "state.read" -> {
                 response.put("language", String.valueOf(options.getClass().getField("languageCode").get(options)));
+                ScriptActions.state(client, response);
                 Object player = client.getClass().getField("player").get(client); response.put("inWorld", Boolean.toString(player != null));
                 if (player != null) { for (String property : new String[]{"X", "Y", "Z", "YRot", "XRot"}) response.put("player." + property, String.valueOf(call(player, "get" + property))); response.put("player.id", String.valueOf(call(player, "getUUID"))); }
             }
-            default -> throw new IOException("command.unsupported");
+            default -> { if (command.startsWith("script.")) ScriptActions.handle(client, request, response); else throw new IOException("command.unsupported"); }
         }
         return response;
     }

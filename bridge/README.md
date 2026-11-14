@@ -1,4 +1,4 @@
-# ØchreCL Game Bridge 0.1.0 alpha
+# ØchreCL Game Bridge 0.2.0 alpha
 
 Optional client bridge for the Minecraft 26.x family. First native test target: **26.2 vanilla main class, no Fabric/Forge**. Other 26.x versions remain unverified and negotiate actual public API availability; there is no blanket compatibility guarantee.
 
@@ -21,10 +21,16 @@ Commands:
 
 Responses include `ok`, protocol, actual game version, component version, and capabilities; errors do not imply a successful mutation. Unknown commands/scopes and invalid tokens are rejected. Game thread timeout cancels a request that has not begun executing. Two handler threads and a four-request bounded queue avoid unbounded background load.
 
-Future script engine, time/inventory/nearby-entity APIs, camera/movement control and pathfinding need separate capabilities and permissions; currently unsupported. The script workspace only saves text drafts. Protocol versions must remain explicit; unknown major versions fail closed rather than being treated as compatible.
+The launcher development build interprets a bounded DSL and adds state/inventory/nearby-player reads and basic camera/input control behind separate per-run permissions. Precise limb transforms and pathfinding remain unavailable. Protocol versions must remain explicit; unknown major versions fail closed rather than being treated as compatible.
 
 ## Validation
 
 `python3 bridge/smoke-native.py` creates a temporary game directory and uses a fake offline account. It tests installed 26.2 client classes with no mod-loader entry point, performs a real handshake, reads/writes master volume, gamma, FOV and render distance, checks wrong-token and unknown-command rejection, then terminates only its own child process. No real world or account is used. Report: `build/native-smoke.json`. The required local official 26.2 assets, libraries and Java 25 must already exist at the paths in the test script.
 
 Windows and Linux native gameplay bridge testing remains outstanding. Automated launcher tests cover protocol bounds, version gating, options-file preservation, update verification and server import preservation separately.
+
+## Script runner development
+
+The launcher now interprets an English, brace-based `.ochre` DSL. It never executes JavaScript/Python/Lua or exposes arbitrary Java calls. See `docs/OCHRE_SCRIPT.md`. New registered commands: `script.inventory`, `script.players`, `script.look`, `script.move`, `script.hit`, `script.release`. Per-run launcher permissions are separate from component consent. Movement input uses an owner-scoped 750ms lease and an independent watchdog, including idempotent toggle-sprint release. Target limb transforms and pathfinding remain explicitly unavailable. The server retains normal authority over interaction results.
+
+`test/io/ochre/bridge/ScriptActionsTest.java` is a standalone contract test with inert fake client objects. It verifies state, inventory identifiers, sorted target selection, rotation, ownership, lease expiry, toggle sprint, and refusal to steal manual input. Native 26.2 validation so far covers handshake/options and rejecting actions outside a world, not full in-world script automation.

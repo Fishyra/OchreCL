@@ -754,7 +754,7 @@ final class OchreShell extends StackPane {
         var tabs = new org.jackhuang.hmcl.ui.construct.OchreTabs(); VBox.setVgrow(tabs, Priority.ALWAYS);
         tabs.addPage("声音与视频", SVG.SETTINGS.createIcon(18), new org.jackhuang.hmcl.ui.construct.GameOptionsPane(key));
         tabs.addPage("运行日志", SVG.SCRIPT.createIcon(18), new org.jackhuang.hmcl.server.RuntimePanel(session));
-        tabs.addPage("脚本 · 预览", SVG.SCRIPT.createIcon(18), new org.jackhuang.hmcl.ui.construct.OchreScriptDrafts());
+        tabs.addPage("脚本", SVG.SCRIPT.createIcon(18), new org.jackhuang.hmcl.ui.construct.OchreScriptDrafts(key));
         JFXButton folder = new JFXButton("实例文件夹"); folder.setGraphic(SVG.FOLDER.createIcon(18)); folder.setOnAction(event -> FXUtils.openFolder(java.nio.file.Path.of(key)));
         JFXButton close = new JFXButton("关闭"); close.setGraphic(SVG.CLOSE.createIcon(18)); close.setOnAction(event -> pane.fireEvent(new org.jackhuang.hmcl.ui.construct.DialogCloseEvent()));
         pane.getChildren().setAll(title, org.jackhuang.hmcl.bridge.BridgeManager.controls(key), tabs, new FlowPane(10, 8, folder, close)); Controllers.dialog(pane);

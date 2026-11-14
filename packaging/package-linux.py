@@ -3,7 +3,7 @@
 from pathlib import Path
 import hashlib, json, os, shutil, subprocess, tarfile, zipfile
 BASE=Path(__file__).resolve().parents[1]
-VERSION=os.environ.get('OCHRE_RELEASE_VERSION','0.3.0-alpha.1')
+VERSION=os.environ.get('OCHRE_RELEASE_VERSION','0.2.0-beta.2')
 JDK=Path('/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home')
 OUT=BASE/'builds'/VERSION
 WORK=BASE/'release-work'/VERSION/'linux'

@@ -15,3 +15,17 @@
 .ochre-runtime-console .content { -fx-background-color: -ochre-log; }
 .label, .text, .hyperlink { -fx-opacity: 1; }
 .ochre-wallpaper-credit { -fx-font-size: 9px; -fx-background-color: -ochre-card; -fx-text-fill: -ochre-ink; -fx-background-radius: 6; -fx-padding: 2 8; }
+
+.ochre-script-library, .ochre-script-editor, .ochre-script-console { -fx-background-color: -ochre-card; -fx-background-radius: 18; }
+.ochre-script-split, .ochre-script-list, .ochre-script-list > .virtual-flow { -fx-background-color: transparent; }
+
+.ochre-code-editor { -fx-background-color: -ochre-card; -fx-background-radius: 18; }
+.ochre-script-workspace .ochre-script-editor, .ochre-script-workspace .ochre-code-gutter,
+.ochre-script-workspace .ochre-script-editor .content, .ochre-script-workspace .ochre-code-gutter .content,
+.ochre-script-workspace .ochre-script-editor > .scroll-pane > .viewport,
+.ochre-script-workspace .ochre-code-gutter > .scroll-pane > .viewport,
+.ochre-script-workspace .ochre-script-console .content,
+.ochre-script-workspace .ochre-script-console > .scroll-pane > .viewport { -fx-background-color: transparent; }
+
+.ochre-script-workspace .ochre-code-editor { -fx-background-color: -ochre-card; }
+.ochre-script-workspace .ochre-script-library, .ochre-script-workspace .ochre-script-output > .title { -fx-background-color: -ochre-muted-surface; }
