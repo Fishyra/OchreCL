@@ -17,6 +17,9 @@ public final class GameOverlay {
     private static double nx = .94, ny = .82, x, y, width = BALL_SIZE, height = BALL_SIZE, mx, my, pressX, pressY, startX, startY;
     private static double uiScale = 1;
     private static long lastSliderApply;
+    /// Recoverable setting failures remain visible without disabling the entire overlay.
+    private static String optionError="";
+    private static long optionErrorUntil;
     private static int windowWidth = 640, windowHeight = 400;
     private static long lastFrame, completedUntil, lastOption, renderedFrames;
     private static String status = "idle", current = "", event = "", lastStatus = "idle";
@@ -97,7 +100,7 @@ public final class GameOverlay {
             if (!pressed) { mx = ((Number)mouse.getClass().getMethod("getScaledXPos",window.getClass()).invoke(mouse,window)).doubleValue()/uiScale; my = ((Number)mouse.getClass().getMethod("getScaledYPos",window.getClass()).invoke(mouse,window)).doubleValue()/uiScale; }
             paint=smooth.begin(client,guiWidth,guiHeight); paint.scale(uiScale,uiScale);
             renderedFrames++;
-            grantRows=Math.max(1,Math.min(6,(windowHeight-108)/22)); grantPage=Math.min(grantPage,Math.max(0,(grants.size()-1)/grantRows)); boolean granting=status.equals("permission"); boolean running=status.equals("running")||status.equals("paused"); double tw=granting?Math.min(280,windowWidth-12):running?Math.min(280,windowWidth-12):expanded?Math.min(280,windowWidth-12):BALL_SIZE, th=granting?Math.min(windowHeight-12,96+Math.min(grantRows,grants.size())*22):running?66:expanded?(library?Math.min(246,72+scripts.size()*20):170):BALL_SIZE;
+            grantRows=Math.max(1,Math.min(6,(windowHeight-108)/22)); grantPage=Math.min(grantPage,Math.max(0,(grants.size()-1)/grantRows)); boolean granting=status.equals("permission"); boolean running=status.equals("running")||status.equals("paused"); double tw=granting?Math.min(280,windowWidth-12):running?Math.min(280,windowWidth-12):expanded?Math.min(280,windowWidth-12):BALL_SIZE, th=granting?Math.min(windowHeight-12,96+Math.min(grantRows,grants.size())*22):running?66:expanded?(library?Math.min(246,72+scripts.size()*20):170+(System.nanoTime()<optionErrorUntil?20:0)):BALL_SIZE;
             long now=System.nanoTime(); double ease=lastFrame==0?1:Math.min(1,(now-lastFrame)/1e9*14); lastFrame=now; width+=(tw-width)*ease; height+=(th-height)*ease;
             if (!pressed) { x=anchoredStart(nx,windowWidth,width); y=anchoredStart(ny,windowHeight,height); }
             x=Math.max(4,Math.min(x,windowWidth-width-4)); y=Math.max(4,Math.min(y,windowHeight-height-4));
@@ -112,9 +115,9 @@ public final class GameOverlay {
                 if(library) drawText(graphics,"脚本库",x+14,y+10,ink); else { drawText(graphics,quick?"视角与操作":"声音",x+30,y+10,ink);if(!quick)drawText(graphics,"视频",x+width/2+30,y+10,ink); line(x+13,y+14,x+19,y+11,ink,1.3f);line(x+19,y+11,x+19,y+22,ink,1.3f);line(x+19,y+22,x+13,y+19,ink,1.3f);line(x+13,y+14,x+13,y+19,ink,1.3f);paint.setColor(new java.awt.Color(ink,true));paint.draw(new java.awt.geom.Arc2D.Double(x+17,y+12,10,10,-60,120,java.awt.geom.Arc2D.OPEN));double vx=x+width/2+12;line(vx,y+12,vx+12,y+12,ink,1.3f);line(vx+12,y+12,vx+12,y+21,ink,1.3f);line(vx+12,y+21,vx,y+21,ink,1.3f);line(vx,y+21,vx,y+12,ink,1.3f); }
                 paint.setFont(paint.getFont().deriveFont(java.awt.Font.PLAIN,10f));line(x+width-21,y+12,x+width-15,y+18,ink,1.4f);line(x+width-15,y+12,x+width-21,y+18,ink,1.4f);
                 if (library) { for(int i=0;i<scripts.size();i++) { drawText(graphics,shorten(scripts.get(i),(int)(width-50)/6),x+12,y+36+i*20,ink); drawText(graphics,"▶",x+width-26,y+36+i*20,ink); } drawText(graphics,"‹ 上一页       "+(page+1)+"       下一页 ›",x+12,y+height-18,ink); }
-                else { if(!vanillaDrag && now-lastOption>150_000_000L) { Map<String,String> options=BridgeAgent.onGameThread(client,Map.of("command","options.get")); for(int i=0;i<6;i++) if(i!=slider && options.containsKey(quick?QUICK[i]:OPTIONS[i])) { String v=options.get(quick?QUICK[i]:OPTIONS[i]); if(quick&&i>=2)switches[i-2]=Boolean.parseBoolean(v);else values[i]=Double.parseDouble(v); } lastOption=now; }
+                else { if(!vanillaDrag && now-lastOption>150_000_000L) { try{Map<String,String> options=BridgeAgent.onGameThread(client,Map.of("command","options.get")); for(int i=0;i<6;i++) if(i!=slider && options.containsKey(quick?QUICK[i]:OPTIONS[i])) { String v=options.get(quick?QUICK[i]:OPTIONS[i]); if(quick&&i>=2)switches[i-2]=Boolean.parseBoolean(v);else values[i]=Double.parseDouble(v); } }catch(Exception error){optionFailure(error);} lastOption=now; }
                     for(int i=0;i<6;i++) { int column=i%2,row=i/2; double bx=x+12+column*(width/2),by=y+36+row*34, length=Math.max(40,width/2-30); if(quick&&i>=2) { drawText(graphics,QUICK_LABELS[i],bx,by,ink);roundedAt(graphics,(int)(bx+length-28),(int)by+13,28,13,6,switches[i-2]?accent:0x33716b5f);paint.setColor(new java.awt.Color(switches[i-2]?card:ink,true));paint.fill(new java.awt.geom.Ellipse2D.Double(bx+length-(switches[i-2]?12:26),by+15,9,9));continue;} String value=quick?(i==0?Integer.toString((int)Math.round(70+40*values[i])):String.format(Locale.ROOT,"%.0f%%",values[i]*200)):i==1||i==3?Integer.toString((int)values[i]):String.format(Locale.ROOT,"%.2f",values[i]); drawText(graphics,quick?QUICK_LABELS[i]:LABELS[i],bx,by,ink); drawText(graphics,value,bx+length-paint.getFontMetrics().stringWidth(value),by,ink); double ratio=Math.max(0,Math.min(1,quick?(i==0?(values[i]+1)/2:values[i]):i==1?(values[i]-2)/30:i==3?(values[i]-10)/250:values[i])); line(bx,by+17,bx+length,by+17,0x22716b5f,1.4f);line(bx,by+17,bx+ratio*length,by+17,accent,1.4f); paint.setColor(new java.awt.Color(accent,true));paint.fill(new java.awt.geom.Ellipse2D.Double(bx+ratio*length-3.8,by+13.2,7.6,7.6)); }
-                    drawText(graphics,"运行脚本 →",x+12,y+height-18,ink);drawText(graphics,quick?"声音 / 视频":"快捷设置 →",x+width/2,y+height-18,ink);
+                    if(now<optionErrorUntil)drawText(graphics,optionError,x+12,y+height-39,ink);drawText(graphics,"运行脚本 →",x+12,y+height-18,ink);drawText(graphics,quick?"声音 / 视频":"快捷设置 →",x+width/2,y+height-18,ink);
                 }
             } else if(width<90) { var iconTransform=paint.getTransform(); paint.translate(x+width/2,y+height/2);paint.scale(1.5,1.5);paint.translate(-x-width/2,-y-height/2); if(status.equals("warning")) { double cx=x+width/2,cy=y+height/2;line(cx,cy-10,cx-10,cy+8,ink,1.8f);line(cx-10,cy+8,cx+10,cy+8,ink,1.8f);line(cx+10,cy+8,cx,cy-10,ink,1.8f);line(cx,cy-4,cx,cy+1,ink,1.8f);line(cx,cy+4,cx,cy+5,ink,1.8f); } else if(now<completedUntil) { line(x+width/2-7,y+height/2,x+width/2-2,y+height/2+5,ink,2);line(x+width/2-2,y+height/2+5,x+width/2+8,y+height/2-6,ink,2); } else cube(); paint.setTransform(iconTransform); }
             renderBubble(graphics, now); smooth.finish(graphics);
@@ -130,7 +133,7 @@ public final class GameOverlay {
         if(failed) return false;
         try { Object window=call(client,"getWindow"), mouse=field(client,"mouseHandler"); if(!pressed) { mx=((Number)mouse.getClass().getMethod("getScaledXPos",window.getClass()).invoke(mouse,window)).doubleValue()/uiScale; my=((Number)mouse.getClass().getMethod("getScaledYPos",window.getClass()).invoke(mouse,window)).doubleValue()/uiScale; } if (!pressed && (Boolean)call(field(client,"mouseHandler"),"isMouseGrabbed")) return false; int button=((Number)call(info,"button")).intValue(); if(button!=0) return false; if(action==0 && vanillaDrag){vanillaDrag=false;return false;}
             if(action==1) { if(!contains(mx,my)) { vanillaDrag=true;if(expanded || pointerReleased) { expanded=false;library=false;pointerReleased=false;if(call(field(client,"gui"),"screen")!=null)return false;restoreMouse(client);return true;} return false; } pressed=true;dragged=false;pressX=mx;pressY=my;startX=x;startY=y;
-                if(expanded&&!library&&my>=y+44&&my<y+139) { int row=(int)((my-y-36)/34),column=mx>x+width/2?1:0; if(row>=0&&row<3) { int index=row*2+column; if(quick&&index>=2){switches[index-2]=!switches[index-2];BridgeAgent.onGameThread(client,Map.of("command","options.set","option."+QUICK[index],Boolean.toString(switches[index-2])));refreshOptionsScreen(client,QUICK[index]);}else {slider=index; lastSliderApply=0; adjust(client,false);} } } return true;
+                if(expanded&&!library&&my>=y+44&&my<y+139) { int row=(int)((my-y-36)/34),column=mx>x+width/2?1:0; if(row>=0&&row<3) { int index=row*2+column; if(quick&&index>=2){boolean before=switches[index-2];try{BridgeAgent.onGameThread(client,Map.of("command","options.set","option."+QUICK[index],Boolean.toString(!before)));switches[index-2]=!before;refreshOptionsScreen(client,QUICK[index]);}catch(Exception error){switches[index-2]=before;optionFailure(error);}}else {slider=index; lastSliderApply=0; adjust(client,false);} } } return true;
             }
             if(action==0&&pressed) { pressed=false; if(slider>=0) { int finished=slider;adjust(client,true);slider=-1;refreshOptionsScreen(client,quick?QUICK[finished]:OPTIONS[finished]);return true; } if(dragged) { nx=Math.max(0,Math.min(1,((nx>=.5?x+width-BALL_SIZE:x)-4)/Math.max(1,windowWidth-BALL_SIZE-8)));ny=Math.max(0,Math.min(1,((ny>=.5?y+height-BALL_SIZE:y)-4)/Math.max(1,windowHeight-BALL_SIZE-8)));savePosition();return true; }
                 if(status.equals("permission")) { if(my>=y+height-27)event=mx>x+width-65?"stop":checkedGrants.size()==grants.size()?"grant:"+grantId+":approve":"";else if(my>=y+height-52){grantPage=Math.max(0,Math.min(Math.max(0,(grants.size()-1)/grantRows),grantPage+(mx>x+width/2?1:-1)));}else {int i=grantPage*grantRows+(int)((my-y-34)/22);if(my>=y+34&&i<grants.size())event="grant:"+grantId+":"+i;}return true; }
@@ -151,14 +154,20 @@ public final class GameOverlay {
         }catch(Throwable error){fail(error);return false;}
     }
     private static void restoreMouse(Object client) throws Exception { if(call(field(client,"gui"),"screen")==null) call(field(client,"mouseHandler"),"grabMouse"); pointerReleased=false; }
-    private static void adjust(Object client,boolean commit)throws Exception {
+    /// Normalizes the slider's request to the actual integer granularity of the vanilla option.
+    static double expectedOption(String name,double value){return name.equals("fov")?(Math.round(70+40*value)-70)/40.0:name.equals("renderDistance")||name.equals("maxFps")?Math.rint(value):value;}
+    /// Reports a setting failure locally; only graphics/adapter failures may disable the overlay.
+    private static void optionFailure(Exception error){if(System.nanoTime()>optionErrorUntil)System.err.println("[OchreBridge] Setting could not be applied: "+error);optionError="设置未能保存，请重试";optionErrorUntil=System.nanoTime()+5_000_000_000L;}
+    private static void adjust(Object client,boolean commit) {
         if(slider<0)return;int column=slider%2;double begin=x+12+column*width/2,ratio=Math.max(0,Math.min(1,(mx-begin)/Math.max(40,width/2-30)));
         double desired=quick?(slider==0?ratio*2-1:ratio):slider==1?Math.rint(2+ratio*30):slider==3?Math.rint(10+ratio*250):ratio;
         long now=System.nanoTime(); if(!commit&&now-lastSliderApply<50_000_000L){values[slider]=desired;return;}
-        BridgeAgent.onGameThread(client,Map.of("command","options.set","transient",Boolean.toString(!commit),"option."+(quick?QUICK[slider]:OPTIONS[slider]),Double.toString(desired)));
-        var actual=BridgeAgent.onGameThread(client,Map.of("command","options.get"));double confirmed=Double.parseDouble(actual.get(quick?QUICK[slider]:OPTIONS[slider]));
-        if(Math.abs(confirmed-desired)>.005)throw new IllegalStateException("Option change rejected by game: "+OPTIONS[slider]);
-        values[slider]=confirmed;lastSliderApply=now;
+        String name=quick?QUICK[slider]:OPTIONS[slider];
+        try{BridgeAgent.onGameThread(client,Map.of("command","options.set","transient",Boolean.toString(!commit),"option."+name,Double.toString(desired)));
+            var actual=BridgeAgent.onGameThread(client,Map.of("command","options.get"));double confirmed=Double.parseDouble(actual.get(name));
+            if(!Double.isFinite(confirmed)||Math.abs(confirmed-expectedOption(name,desired))>.005)throw new IllegalStateException("Option change rejected by game: "+name);
+            values[slider]=confirmed;lastSliderApply=now;optionError="";optionErrorUntil=0;
+        }catch(Exception error){optionFailure(error);lastSliderApply=now;}
     }
     /// Vanilla option widgets cache their value; refresh them only after committing an overlay drag.
     private static void refreshOptionsScreen(Object client,String name) {

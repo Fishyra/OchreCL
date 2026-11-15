@@ -494,9 +494,36 @@ tasks.register<UpdateAddonProjectInfos>("updateModpackProjectInfos") {
 tasks.withType<Test>().configureEach {
     val isolatedWork = layout.buildDirectory.dir("isolated-test-data/work").get().asFile
     workingDir(isolatedWork)
-    systemProperty("ochre.examples", rootProject.rootDir.resolve("examples").absolutePath)
+    systemProperty("ochre.examples", (if (rootProject.file("examples").isDirectory) rootProject.file("examples") else rootProject.rootDir.parentFile.resolve("examples")).absolutePath)
     doFirst { isolatedWork.mkdirs() }
     systemProperty("user.home", layout.buildDirectory.dir("isolated-test-data/user").get().asFile.absolutePath)
     systemProperty("hmcl.dir", layout.buildDirectory.dir("isolated-test-data/local").get().asFile.absolutePath)
     systemProperty("hmcl.home", layout.buildDirectory.dir("isolated-test-data/home").get().asFile.absolutePath)
 }
+
+// Bind release JARs to their source inputs, so the publisher refuses stale source archives.
+val ochreSourceRecord = tasks.register("ochreSourceRecord") {
+    val bridgeRoot = if (rootProject.file("bridge/src").exists()) rootProject.rootDir else rootProject.rootDir.parentFile
+    val trees = listOf("HMCL", "HMCLCore", "HMCLBoot").map { rootProject.fileTree("$it/src/main") { include("**/*.java", "**/*.css", "**/*.json", "**/*.png", "**/*.svg", "**/*.properties"); exclude("assets/ochre-source.json") } } +
+        listOf("bridge/src", "bridge/hooks").map { fileTree(bridgeRoot.resolve(it)) { include("**/*.java") } } +
+        listOf(rootProject.fileTree("minecraft/libraries") { include("**/src/main/**/*.java") })
+    val configs = listOf("build.gradle.kts", "settings.gradle.kts", "gradlew", "gradlew.bat", "gradlew.ps1", "HMCL/build.gradle.kts", "HMCLCore/build.gradle.kts", "HMCLBoot/build.gradle.kts", "buildSrc/build.gradle.kts", "gradle/libs.versions.toml", "gradle/wrapper/gradle-wrapper.properties", "config/project.properties").map { rootProject.file(it) }.filter { it.isFile }
+    val buildSources = rootProject.fileTree("buildSrc/src") { include("**/*.java", "**/*.groovy", "**/*.kt", "**/*.properties") }
+    val libraryBuilds = rootProject.fileTree("minecraft/libraries") { include("**/build.gradle.kts") }
+    inputs.files(trees, configs, buildSources, libraryBuilds).withPathSensitivity(PathSensitivity.RELATIVE)
+    val record = layout.buildDirectory.file("generated/ochre-source/assets/ochre-source.json")
+    outputs.file(record)
+    dependsOn("upsideDownTranslate")
+    doLast {
+        val hashes = sortedMapOf<String, String>()
+        (trees.flatMap { it.files } + configs + buildSources.files + libraryBuilds.files).forEach { input ->
+            val base = if (input.toPath().startsWith(bridgeRoot.resolve("bridge").toPath())) bridgeRoot else rootProject.rootDir
+            val name = input.relativeTo(base).invariantSeparatorsPath
+            hashes[name] = MessageDigest.getInstance("SHA-256").digest(input.readBytes()).joinToString("") { "%02x".format(it) }
+        }
+        val image = record.get().asFile; image.parentFile.mkdirs()
+        image.writeText("{\"schema\":1,\"files\":{" + hashes.entries.joinToString(",") { "\"${it.key}\":\"${it.value}\"" } + "}}\n")
+    }
+}
+sourceSets.main { resources.srcDir(layout.buildDirectory.dir("generated/ochre-source")) }
+tasks.processResources { dependsOn(ochreSourceRecord) }

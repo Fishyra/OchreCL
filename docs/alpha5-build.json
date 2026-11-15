@@ -1,0 +1,11 @@
+{
+  "version": "0.3.0-alpha.5",
+  "update_jar_sha256": "b20f4fefb766afb2fbc9592589031a59b80833f88f27f7f50f6c1508f7b03dbd",
+  "source_inputs": 1143,
+  "changes": [
+    "Clock fonts survive CSS reapplication",
+    "FOV readback follows integer angle granularity; setting failures preserve overlay",
+    "Publisher requires source folder/ZIP and matching JAR build record"
+  ],
+  "validation": "Clock stylesheet reload test and temporary native Fabric 26.2 FOV fixture passed"
+}

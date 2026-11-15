@@ -48,8 +48,8 @@ public final class ServerDeploymentPage extends BorderPane {
         ServerToolSwitch tunnel = OpenFrpControls.create(() -> Integer.parseInt(values.get("port").getText().trim()), selectedTunnel::set, () -> selectedTunnel.set(null));
         input(serviceFields, values, "sftp.port", "SFTP 本机端口", "2022"); input(serviceFields, values, "sftp.user", "SFTP 用户名", "ochre");
         PasswordField sftpPassword = new JFXPasswordField(); sftpPassword.setPromptText("SFTP 密码（不保存）");
-
-
+        
+        
         serviceFields.getChildren().addAll(sftpPassword, networkSftp, sftp, tunnel);
         TitledPane serviceOptions = new TitledPane("SFTP 与内网穿透", serviceFields); serviceOptions.setExpanded(false); fields.getChildren().add(serviceOptions);
         CheckBox eula = new JFXCheckBox("我已阅读并同意 Minecraft EULA"); eula.setWrapText(true);
