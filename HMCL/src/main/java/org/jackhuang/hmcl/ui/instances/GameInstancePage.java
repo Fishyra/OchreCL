@@ -54,6 +54,8 @@ public class GameInstancePage extends DecoratorAnimatedPage implements Decorator
     private final TabItem<ResourcePackListPage> resourcePackTab;
     /// The screenshots tab bound to the current game instance.
     private final TabItem<ScreenshotsPage> screenshotsTab;
+    /// Instance-bound script management workspace.
+    private final TabItem<VBox> scriptTab;
     private final TransitionPane transitionPane = new TransitionPane();
     private final BooleanProperty currentInstanceUpgradable = new SimpleBooleanProperty();
     private final ObjectProperty<HMCLGameInstance.@Nullable Optional> instance =
@@ -88,6 +90,7 @@ public class GameInstancePage extends DecoratorAnimatedPage implements Decorator
         this.schematicsTab = new TabItem<>(() -> new SchematicsPage(instance));
         this.screenshotsTab = new TabItem<>(() -> new ScreenshotsPage(instance));
 
+        this.scriptTab = new TabItem<>(() -> { VBox pane = new VBox(); Runnable update = () -> { for (var child : pane.getChildren()) if (child instanceof OchreScriptDrafts old) old.dispose(); pane.getChildren().clear(); var current = instance.get(); if (current != null) { var drafts = new OchreScriptDrafts(current.instance().getInstanceRoot().toAbsolutePath().normalize().toString()); drafts.enableDetach(); pane.getChildren().add(drafts); VBox.setVgrow(drafts, Priority.ALWAYS); } }; instance.addListener((observable, before, after) -> update.run()); update.run(); return pane; });
         tabController = new TabController(transitionPane,
                 gameSettingsTab,
                 installerListTab,
@@ -95,7 +98,7 @@ public class GameInstancePage extends DecoratorAnimatedPage implements Decorator
                 resourcePackTab,
                 worldListTab,
                 schematicsTab,
-                screenshotsTab);
+                screenshotsTab, scriptTab);
         tabController.selectTab(gameSettingsTab);
 
         addEventHandler(Navigator.NavigationEvent.NAVIGATED, this::onNavigated);
@@ -357,6 +360,7 @@ public class GameInstancePage extends DecoratorAnimatedPage implements Decorator
                         .addNavigationDrawerTab(control.tabController, control.installerListTab, i18n("settings.tabs.installers"), SVG.DEPLOYED_CODE, SVG.DEPLOYED_CODE_FILL)
                         .addNavigationDrawerTab(control.tabController, control.modListTab, i18n("mods.manage"), SVG.EXTENSION, SVG.EXTENSION_FILL)
                         .addNavigationDrawerTab(control.tabController, control.resourcePackTab, i18n("resourcepack.manage"), SVG.TEXTURE)
+                        .addNavigationDrawerTab(control.tabController, control.scriptTab, "脚本管理", SVG.SCRIPT)
                         .addNavigationDrawerTab(control.tabController, control.worldListTab, i18n("world.manage"), SVG.PUBLIC)
                         .addNavigationDrawerTab(control.tabController, control.schematicsTab, i18n("schematics.manage"), SVG.SCHEMA, SVG.SCHEMA_FILL);
                 VBox.setVgrow(sideBar, Priority.ALWAYS);

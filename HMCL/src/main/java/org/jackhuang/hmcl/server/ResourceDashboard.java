@@ -31,6 +31,7 @@ public final class ResourceDashboard extends VBox {
     public ResourceDashboard() {
         super(8);
         getStyleClass().add("ochre-resource-dashboard");
+        setMinSize(0, 0); grid.setMinSize(0, 0); VBox.setVgrow(grid, Priority.ALWAYS);
         grid.setHgap(10); grid.setVgap(10);
         widthProperty().addListener((observable, previous, width) -> arrange(width.doubleValue()));
         arrange(0);
@@ -41,7 +42,7 @@ public final class ResourceDashboard extends VBox {
         int columns = width >= 680 ? 4 : 2;
         if (gridColumns == columns) return;
         gridColumns = columns;
-        grid.getColumnConstraints().clear(); grid.getChildren().clear();
+        grid.getColumnConstraints().clear(); grid.getRowConstraints().clear(); grid.getChildren().clear(); for (int row = 0; row < 4 / columns; row++) { RowConstraints constraint = new RowConstraints(); constraint.setPercentHeight(100.0 / (4 / columns)); constraint.setMinHeight(0); grid.getRowConstraints().add(constraint); }
         for (int i = 0; i < columns; i++) {
             ColumnConstraints column = new ColumnConstraints(); column.setPercentWidth(100.0 / columns); column.setMinWidth(0); grid.getColumnConstraints().add(column);
         }
@@ -74,11 +75,11 @@ public final class ResourceDashboard extends VBox {
         private final Sparkline chart = new Sparkline();
         /// Builds a rounded product surface with no chart library or animation timer.
         private MetricCard(String title) {
-            super(3); setMinWidth(0); getStyleClass().add("ochre-metric-card");
+            super(3); setMinSize(0, 0); getStyleClass().add("ochre-metric-card");
             Label heading = new Label(title); heading.getStyleClass().add("ochre-metric-heading");
             value.getStyleClass().add("ochre-metric-value"); detail.getStyleClass().add("ochre-metric-detail");
             value.setMinWidth(0); detail.setMinWidth(0); detail.setWrapText(true);
-            getChildren().setAll(heading, value, detail, chart);
+            getChildren().setAll(heading, value, detail, chart); VBox.setVgrow(chart, Priority.ALWAYS); heightProperty().addListener((observable, before, height) -> { double h = height.doubleValue(); setPadding(new javafx.geometry.Insets(Math.min(12, h * .08))); detail.setVisible(h >= 110); detail.setManaged(h >= 110); value.setStyle("-fx-font-size: " + Math.max(14, Math.min(22, h * .18)) + "px;"); });
             Tooltip.install(chart, new Tooltip("每 2 秒采样，最多显示最近 30 秒；缺失数据留空"));
         }
         /// Replaces text and appends one measured history value.
@@ -97,7 +98,7 @@ public final class ResourceDashboard extends VBox {
         private final Circle point = new Circle(2);
         /// Installs unmanaged vectors so resizing cannot create a layout feedback loop.
         private Sparkline() {
-            setMinSize(0, 25); setPrefSize(100, 25); setMaxWidth(Double.MAX_VALUE);
+            setMinSize(0, 4); setPrefSize(100, 25); setMaxHeight(Double.MAX_VALUE); setMaxWidth(Double.MAX_VALUE);
             path.setManaged(false); baseline.setManaged(false); point.setManaged(false);
             point.getStyleClass().add("ochre-metric-point");
             path.getStyleClass().add("ochre-metric-line"); baseline.getStyleClass().add("ochre-metric-baseline");

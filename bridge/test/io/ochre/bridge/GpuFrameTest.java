@@ -1,0 +1,5 @@
+package io.ochre.bridge;
+/// Tests the final framebuffer, which must contain a substantial area of the configured product card color.
+public final class GpuFrameTest {
+ public static void main(String[] args)throws Exception {java.awt.image.BufferedImage image=null;long deadline=System.nanoTime()+5_000_000_000L;while(image==null&&System.nanoTime()<deadline){try{image=javax.imageio.ImageIO.read(java.nio.file.Path.of(args[0]).toFile());}catch(java.io.IOException ignored){}if(image==null)Thread.sleep(50);}if(image==null)throw new AssertionError("GPU screenshot was not completely written");int visible=0;for(int y=0;y<image.getHeight();y++)for(int x=0;x<image.getWidth();x++){int pixel=image.getRGB(x,y);if(Math.abs(((pixel>>>16)&255)-250)<=2&&Math.abs(((pixel>>>8)&255)-246)<=2&&Math.abs((pixel&255)-236)<=2)visible++;}if(visible<5000)throw new AssertionError("Product overlay missing from final GPU frame: "+visible);System.out.println("PASS: actual GPU frame contains "+visible+" product panel pixels");}
+}

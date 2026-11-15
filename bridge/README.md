@@ -1,10 +1,10 @@
-# ØchreCL Game Bridge 0.2.0 alpha
+# ØchreCL Game Bridge 0.3.0 alpha
 
-Optional client bridge for the Minecraft 26.x family. First native test target: **26.2 vanilla main class, no Fabric/Forge**. Other 26.x versions remain unverified and negotiate actual public API availability; there is no blanket compatibility guarantee.
+Optional client bridge for the Minecraft 26.x family. Native validation: **26.2 vanilla and Fabric Loader 0.19.5**. Forge, NeoForge and Quilt have not been tested as complete installations. Other 26.x versions remain unverified and negotiate actual public API availability; there is no blanket compatibility guarantee.
 
 The launcher asks the player to install and authorize this component for one instance. It is attached as a Java agent on the next game launch. It is not a Fabric JAR to copy into `mods`, and does not modify Minecraft archives. Disable it in 操作游戏 → 停用组件; the current game must exit to fully remove the in-process component.
 
-Build: `python3 packaging/build-bridge.py` from the project root. Run it before Gradle when changing bridge source. The bundled resource is `HMCL/src/main/resources/assets/bridge/OchreBridge.jar`.
+Build: `python3 launcher-dev/scripts/build-bridge.py` from the project root. `gradle.command` also calls this before building the launcher. The bundled resource is `HMCL/src/main/resources/assets/bridge/OchreBridge.jar`.
 
 ## Protocol 1
 
@@ -25,12 +25,21 @@ The launcher development build interprets a bounded DSL and adds state/inventory
 
 ## Validation
 
-`python3 bridge/smoke-native.py` creates a temporary game directory and uses a fake offline account. It tests installed 26.2 client classes with no mod-loader entry point, performs a real handshake, reads/writes master volume, gamma, FOV and render distance, checks wrong-token and unknown-command rejection, then terminates only its own child process. No real world or account is used. Report: `build/native-smoke.json`. The required local official 26.2 assets, libraries and Java 25 must already exist at the paths in the test script.
+`python3 launcher-dev/bridge/smoke-native.py` creates a temporary game directory and uses a fake offline account. It tests installed 26.2 client classes with no mod-loader entry point, performs a real handshake, reads/writes master volume, gamma, FOV and render distance, checks wrong-token and unknown-command rejection, then terminates only its own child process. No real world or account is used. Reports: `build/native-smoke-vanilla.json` and `build/native-smoke-fabric.json`. Pass `--loader fabric` to exercise the real Knot/Mixin entry point with an empty temporary mods directory. The required local official 26.2 assets, libraries and Java 25 must already exist at the paths in the test script.
 
 Windows and Linux native gameplay bridge testing remains outstanding. Automated launcher tests cover protocol bounds, version gating, options-file preservation, update verification and server import preservation separately.
 
 ## Script runner development
 
-The launcher now interprets an English, brace-based `.ochre` DSL. It never executes JavaScript/Python/Lua or exposes arbitrary Java calls. See `docs/OCHRE_SCRIPT.md`. New registered commands: `script.inventory`, `script.players`, `script.look`, `script.move`, `script.hit`, `script.release`. Per-run launcher permissions are separate from component consent. Movement input uses an owner-scoped 750ms lease and an independent watchdog, including idempotent toggle-sprint release. Target limb transforms and pathfinding remain explicitly unavailable. The server retains normal authority over interaction results.
+The launcher now interprets an English, brace-based `.ochre` DSL. It never executes JavaScript/Python/Lua or exposes arbitrary Java calls. See `hmcl-source/docs/OCHRE_SCRIPT.md`. New registered commands: `script.inventory`, `script.players`, `script.look`, `script.move`, `script.hit`, `script.release`. Per-run launcher permissions are separate from component consent. Movement input uses an owner-scoped 750ms lease and an independent watchdog, including idempotent toggle-sprint release. Target limb transforms and pathfinding remain explicitly unavailable. The server retains normal authority over interaction results.
 
 `test/io/ochre/bridge/ScriptActionsTest.java` is a standalone contract test with inert fake client objects. It verifies state, inventory identifiers, sorted target selection, rotation, ownership, lease expiry, toggle sprint, and refusal to steal manual input. Native 26.2 validation so far covers handshake/options and rejecting actions outside a world, not full in-world script automation.
+
+
+## Mod-loader dependency isolation
+
+The agent relocates ASM core/tree into `io.ochre.bridge.internal.asm`, including every class reference and descriptor. It exposes no `org/objectweb/asm` classes, loader service discovery entries or module descriptor. Builds validate the outer and nested archives and retain the ASM license. Input fingerprints include source files, packaging code, dependencies and the bootstrap callback source.
+
+Only the small JDK-only `io.ochre.bridge.bootstrap.v1.OverlayHooks` callback archive is appended to the bootstrap search. The agent, ASM and game APIs remain outside that archive. Method handles bind callbacks to the original agent helpers, avoiding a duplicate bridge class in Knot or other isolated loaders. Named game modules receive only a read edge to the callback module when needed. Hook signatures and helper visibility are checked before transformation; a mismatch keeps original game bytes. Loader classes are never transformed, and class-path isolation is never disabled.
+
+`python3 launcher-dev/bridge/test-loader-isolation.py` checks all 10 locally installed ASM generations (9.1 through 9.10.1), the actual Fabric `LoaderUtil.verifyClasspath`, private transformer operation, mismatched game signatures, and an intentionally inaccessible helper. It does not claim complete Forge/NeoForge/Quilt gameplay validation. Existing consented, checksum-valid bridge images refresh from the launcher bundle before the next game process starts; disabled consent and corrupt images remain rejected. Running game images remain in place.

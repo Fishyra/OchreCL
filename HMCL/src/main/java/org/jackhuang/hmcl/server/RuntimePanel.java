@@ -58,17 +58,12 @@ public final class RuntimePanel extends VBox {
         FlowPane toolbar = new FlowPane(10, 8, new Label("实时日志"), status, follow, copy, copyLoad);
         toolbar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         console.setEditable(false);
-        console.setWrapText(false);
+        console.setWrapText(true);
         console.setMinHeight(72);
         console.getStyleClass().add("ochre-runtime-console");
         VBox.setVgrow(console, Priority.ALWAYS);
-        ScrollPane resources = new ScrollPane(metrics); resources.setFitToWidth(true);
-        resources.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); resources.setMinHeight(60);
-        resources.getStyleClass().add("ochre-resource-scroll");
-        resources.prefHeightProperty().bind(javafx.beans.binding.Bindings.createDoubleBinding(
-                () -> Math.max(60, Math.min(getWidth() >= 708 ? 156 : 280, getHeight() - toolbar.prefHeight(Math.max(100, getWidth() - 24)) - 116)), widthProperty(), heightProperty()));
-        resources.setMaxHeight(Region.USE_PREF_SIZE);
-        getChildren().setAll(resources, toolbar, console);
+        metrics.setMinSize(0, 0); metrics.prefHeightProperty().bind(javafx.beans.binding.Bindings.createDoubleBinding(() -> Math.max(100, Math.min(getWidth() >= 704 ? 180 : 300, getHeight() * .46)), widthProperty(), heightProperty())); metrics.setMaxHeight(Region.USE_PREF_SIZE);
+        getChildren().setAll(metrics, toolbar, console);
         timer = new Timeline(new KeyFrame(Duration.millis(250), event -> sample()));
         timer.setCycleCount(Timeline.INDEFINITE);
         sceneProperty().addListener((observable, oldScene, scene) -> {

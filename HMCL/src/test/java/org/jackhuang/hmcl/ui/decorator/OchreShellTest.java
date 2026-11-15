@@ -482,6 +482,45 @@ public final class OchreShellTest {
             } finally { settings.themeBrightnessModeProperty().set(mode); settings.backgroundTypeProperty().set(background); settings.backgroundOpacityProperty().set(opacity); settings.getThemeAppearanceOverrides().clear(); settings.getThemeAppearanceOverrides().addAll(flags); }
         } finally { stage.close(); scene.setRoot(new javafx.scene.layout.StackPane()); animation.set(priorAnimation); }
     }
+    /// The full content workspace accepts normal typed input without moving to a separate stage.
+    @Test public void scriptWorkspaceAcceptsTypingInMainWindow() throws Exception {
+        java.nio.file.Path isolated = java.nio.file.Files.createTempDirectory("ochre-inline-editor-test");
+        System.setProperty("hmcl.dir", isolated.resolve("local").toString()); System.setProperty("hmcl.home", isolated.resolve("home").toString()); JavaFXLauncher.start();
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        Platform.runLater(() -> { try {
+            try { org.jackhuang.hmcl.setting.SettingsManager.settings(); } catch (IllegalStateException error) { org.jackhuang.hmcl.setting.SettingsManager.init(); }
+            org.jackhuang.hmcl.setting.GameDirectoryManager.init(); Decorator decorator = new Decorator(new RootPage(), stage -> {});
+            var stage = new javafx.stage.Stage(); var scene = new Scene(decorator.getRoot(),1000,700); stage.setScene(scene);org.jackhuang.hmcl.setting.StyleSheets.init(scene);stage.show();scene.getRoot().applyCss();scene.getRoot().layout();
+            OchreShell shell = (OchreShell)scene.getRoot().lookup(".ochre-shell"); var open = OchreShell.class.getDeclaredMethod("showScriptWorkspace",String.class);open.setAccessible(true);open.invoke(shell,isolated.resolve("game").toString());scene.getRoot().applyCss();scene.getRoot().layout();
+            Platform.runLater(() -> { try {
+                var editor=(javafx.scene.control.TextArea)scene.getRoot().lookup(".ochre-script-editor");assertNotNull(editor);assertSame(editor,scene.getFocusOwner());editor.clear();
+                editor.fireEvent(new javafx.scene.input.KeyEvent(javafx.scene.input.KeyEvent.KEY_TYPED,"x","x",javafx.scene.input.KeyCode.UNDEFINED,false,false,false,false));
+                assertEquals("x",editor.getText());
+                var workspace=scene.getRoot().lookup(".ochre-script-workspace");
+                ((javafx.scene.control.ButtonBase)workspace.lookupAll(".button").stream().filter(node -> node instanceof javafx.scene.control.ButtonBase button && button.getText().equals("新建脚本")).findFirst().orElseThrow()).fire();
+                editor.setText("print(1);");
+                ((javafx.scene.control.ButtonBase)workspace.lookupAll(".button").stream().filter(node -> node instanceof javafx.scene.control.ButtonBase button && button.getText().equals("重命名")).findFirst().orElseThrow()).fire();
+                var dialog=(javafx.stage.Stage)javafx.stage.Window.getWindows().stream().filter(window -> window != stage && window instanceof javafx.stage.Stage other && other.getTitle().equals("Øchre Script")).findFirst().orElseThrow(); assertSame(stage,dialog.getOwner());dialog.getScene().getRoot().applyCss();dialog.getScene().getRoot().layout();var card=(javafx.scene.layout.Region)dialog.getScene().getRoot().lookup(".ochre-content-panel");assertTrue(card.getBackground().getFills().get(0).getRadii().getTopLeftHorizontalRadius()>0);saveSnapshot(dialog.getScene().getRoot(),"script-rename-dialog.png");
+                var field=(javafx.scene.control.TextField)dialog.getScene().getRoot().lookup(".text-field");field.setText("rename-ui-test");
+                ((javafx.scene.control.ButtonBase)dialog.getScene().getRoot().lookupAll(".button").stream().filter(node -> node instanceof javafx.scene.control.ButtonBase button && button.getText().equals("重命名")).findFirst().orElseThrow()).fire();
+                dialog.close(); var scripts=(javafx.scene.control.ListView<?>)workspace.lookup(".ochre-script-list");assertEquals("rename-ui-test.ochre",((java.nio.file.Path)scripts.getSelectionModel().getSelectedItem()).getFileName().toString());
+                for (int row = 0; row < 30; row++) { @SuppressWarnings("unchecked") var typed = (javafx.scene.control.ListView<java.nio.file.Path>)scripts; typed.getItems().add(isolated.resolve("a-very-long-script-filename-for-overflow-testing-" + row + ".ochre")); }
+                scene.getRoot().applyCss();scene.getRoot().layout();
+                for (var node : scripts.lookupAll(".list-cell")) if (node instanceof javafx.scene.control.ListCell<?> cell && !cell.isEmpty()) { assertTrue(cell.getWidth() <= scripts.getWidth() - 10); assertEquals(javafx.scene.control.OverrunStyle.ELLIPSIS,cell.getTextOverrun());assertNotNull(cell.getTooltip()); }
+                for (var node : scripts.lookupAll(".scroll-bar")) if (node instanceof javafx.scene.control.ScrollBar bar && bar.getOrientation() == javafx.geometry.Orientation.HORIZONTAL) assertFalse(bar.isVisible());
+                saveSnapshot(scene.getRoot(),"script-foundations-workspace.png");
+                ((javafx.scene.control.ButtonBase)workspace.lookupAll(".button").stream().filter(node -> node instanceof javafx.scene.control.ButtonBase button && button.getText().equals("删除")).findFirst().orElseThrow()).fire();
+                var deletion=(javafx.stage.Stage)javafx.stage.Window.getWindows().stream().filter(window -> window != stage && window instanceof javafx.stage.Stage other && other.getTitle().equals("Øchre Script")).findFirst().orElseThrow();
+                ((javafx.scene.control.ButtonBase)deletion.getScene().getRoot().lookupAll(".button").stream().filter(node -> node instanceof javafx.scene.control.ButtonBase button && button.getText().equals("删除脚本")).findFirst().orElseThrow()).fire(); assertTrue(editor.getText().isEmpty());deletion.close(); assertTrue(editor.isWrapText()); editor.setText("print(\"" + "x".repeat(300) + "\");\nprint(2);"); var originalSource = editor.getText(); scene.getRoot().applyCss();scene.getRoot().layout();assertEquals(originalSource, editor.getText());
+                assertTrue(workspace.lookupAll(".button").stream().anyMatch(node -> node instanceof javafx.scene.control.ButtonBase button && "脚本帮助文档".equals(button.getAccessibleText())));
+                org.jackhuang.hmcl.script.ScriptPreferences.save(org.jackhuang.hmcl.script.OchreScript.FailurePolicy.STOP,3,false); editor.setText("print(game.language); player.jump();"); var start = workspace.getClass().getDeclaredMethod("start");start.setAccessible(true);start.invoke(workspace); String instanceKey = isolated.resolve("game").toString(); var grant = org.jackhuang.hmcl.ui.construct.OchreScriptDrafts.grantState(instanceKey);assertEquals("permission",grant.get("status"));assertEquals("2",grant.get("grant_count"));org.jackhuang.hmcl.ui.construct.OchreScriptDrafts.grantAction(instanceKey,"grant:stale:0");assertEquals("false",org.jackhuang.hmcl.ui.construct.OchreScriptDrafts.grantState(instanceKey).get("grant_checked.0"));org.jackhuang.hmcl.ui.construct.OchreScriptDrafts.grantAction(instanceKey,"grant:"+grant.get("grant_id")+":0");assertEquals("true",org.jackhuang.hmcl.ui.construct.OchreScriptDrafts.grantState(instanceKey).get("grant_checked.0"));org.jackhuang.hmcl.ui.construct.OchreScriptDrafts.stopFor(instanceKey);assertTrue(org.jackhuang.hmcl.ui.construct.OchreScriptDrafts.grantState(instanceKey).isEmpty());
+                var clockSetter=OchreShell.class.getDeclaredMethod("setClockMode",boolean.class);clockSetter.setAccessible(true);clockSetter.invoke(shell,true);var clockField=OchreShell.class.getDeclaredField("clockTime");clockField.setAccessible(true);var clockLabel=(javafx.scene.control.Label)clockField.get(shell);assertNotNull(clockLabel);assertTrue(clockLabel.getText().matches("[0-9]{2}:[0-9]{2}:[0-9]{2}"));clockSetter.invoke(shell,false);
+                var dashboard=new org.jackhuang.hmcl.server.ResourceDashboard();var metricScene=new Scene(dashboard,340,190);org.jackhuang.hmcl.setting.StyleSheets.init(metricScene);stage.setScene(metricScene);dashboard.applyCss();dashboard.layout();assertEquals(4,dashboard.lookupAll(".ochre-metric-card").size());for(var node:dashboard.lookupAll(".ochre-metric-card")){var bounds=node.localToScene(node.getBoundsInLocal());assertTrue(bounds.getMaxY()<=dashboard.getHeight()+1);assertTrue(bounds.getMaxX()<=dashboard.getWidth()+1);}assertTrue(dashboard.lookupAll(".scroll-pane").isEmpty());
+                result.complete(null);
+            } catch(Throwable error){result.completeExceptionally(error);} finally {stage.close();} });
+        } catch(Throwable error){result.completeExceptionally(error);} }); result.get(20,TimeUnit.SECONDS);
+    }
+
     /// Writes an actual JavaFX rendering for visual review without capturing the user's desktop.
     private static void saveSnapshot(javafx.scene.Node node, String name) throws Exception {
         var image = node.snapshot(null, null); var bitmap = new java.awt.image.BufferedImage((int) image.getWidth(), (int) image.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);

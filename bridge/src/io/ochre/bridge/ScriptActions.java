@@ -36,13 +36,13 @@ public final class ScriptActions {
     /// Reads actual health and clock state, omitting capabilities that this version cannot supply.
     public static void state(Object client, Map<String, String> response) throws Exception {
         Object player = field(client, "player"), level = field(client, "level");
-        if (player != null) response.put("player.health", String.valueOf(call(player, "getHealth")));
+        if (player != null) { response.put("player.health", String.valueOf(call(player, "getHealth"))); try { ExtendedActions.state(player, response); } catch (ReflectiveOperationException ignored) { } }
         if (level != null) { try { response.put("world.day_time", String.valueOf(call(level, "getDefaultClockTime"))); } catch (ReflectiveOperationException ignored) { } try { response.put("world.game_time", String.valueOf(call(call(level, "getLevelData"), "getGameTime"))); } catch (ReflectiveOperationException ignored) { } }
     }
     /// Routes only a fixed set of documented script requests, all invoked on the Minecraft thread.
     public static void handle(Object client, Map<String, String> request, Map<String, String> response) throws Exception {
         String command = request.get("command");
-        if (!Set.of("script.release", "script.inventory", "script.players", "script.look", "script.move", "script.hit").contains(command)) throw new IOException("command.unsupported");
+        if (!Set.of("script.release", "script.inventory", "script.players", "script.look", "script.move", "script.hit").contains(command)) { ExtendedActions.handle(client, request, response); return; }
         if (command.equals("script.release")) { if (owner.equals(request.get("owner"))) release(); return; }
         Object player = player(client);
         switch (command) {

@@ -33,7 +33,7 @@ public final class OchreUpdatePane extends VBox {
         Label policy = new Label("下载后校验 SHA-256，写入用户目录，下次重新打开启动器生效。不会强制停止游戏或服务器，也不会修改应用包。原运行环境无需改变的更新才适用此通道。"); policy.setWrapText(true);
         JFXButton check = new JFXButton("检查更新"), install = new JFXButton("下载并准备更新"), rollback = new JFXButton("下次使用内置版本"), close = new JFXButton("关闭"); check.setGraphic(SVG.SEARCH.createIcon(18)); install.setGraphic(SVG.DOWNLOAD.createIcon(18)); install.setDisable(true);
         check.setOnAction(event -> { check.setDisable(true); install.setDisable(true); status.setText("正在检查 GitHub 发布…"); Schedulers.io().execute(() -> {
-            try { @Nullable var release = OchreUpdater.check(); Platform.runLater(() -> { available = release; status.setText(release == null ? "未发现比当前版本更新且提供可校验自动更新包的发布。" : "可用更新：" + release.version() + " · " + Math.round(release.size() / 1048576.0) + " MiB"); notes.setText(release == null ? "发布者需要将 OchreCL-update.jar 上传到 Fishyra/OchreCL Releases。GitHub 提供的 SHA-256 元数据必须存在。蓝奏云完整安装包仍可从官网下载。" : release.notes()); install.setDisable(release == null); check.setDisable(false); }); }
+            try { @Nullable var release = OchreUpdater.check(); Platform.runLater(() -> { available = release; status.setText(release == null ? "未发现比当前版本更新且提供可校验自动更新包的发布。" : "可用更新：" + release.version() + " · " + Math.round(release.size() / 1048576.0) + " MiB"); notes.setText(release == null ? "发布者需要将 OchreCL-update.jar 上传到 Fishyra/OchreCL Releases。GitHub 提供的 SHA-256 元数据必须存在。完整安装包可从官网下载。" : release.notes()); install.setDisable(release == null); check.setDisable(false); }); }
             catch (Exception error) { Platform.runLater(() -> { status.setText("检查失败：" + error.getMessage()); check.setDisable(false); }); }
         }); });
         install.setOnAction(event -> { @Nullable var release = available; if (release == null) return; install.setDisable(true);
@@ -43,6 +43,7 @@ public final class OchreUpdatePane extends VBox {
         JFXButton website = new JFXButton("完整安装包 ↗"); website.setOnAction(event -> FXUtils.openLink("https://fishyra.github.io/ochrecl/#download"));
         close.setOnAction(event -> fireEvent(new DialogCloseEvent())); FlowPane actions = new FlowPane(10, 8, check, install, website, rollback, close);
         getChildren().setAll(title, version, status, policy, notes, actions);
+        check.fire();
         @Nullable String fallback = System.getProperty("ochre.updateFallback"); if (fallback != null) status.setText("上次更新校验未通过，当前已使用内置版本。" + fallback);
     }
 }

@@ -1,0 +1,12 @@
+// Observe for 10 seconds. Move, switch hotbar slots and crouch in the game.
+// This script does not move, mine, place or send chat.
+Record sample = player.snapshot();
+print("Initial state:", sample);
+for (int i = 0; i < 50; i++) {
+    for (event in player.events()) {
+        print(event);
+    }
+    sleep(200ms);
+}
+print("Game log tail:", game.logs(limit=10));
+say("Observation finished.", duration=3s);

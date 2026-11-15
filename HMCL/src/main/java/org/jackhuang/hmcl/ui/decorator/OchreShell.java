@@ -97,6 +97,8 @@ final class OchreShell extends StackPane {
     private final VBox inspector = new VBox(12);
     /// Floating action for all non-home pages.
     private final JFXButton compactLaunch = new JFXButton();
+    /// Home-only shortcut kept to the right of even an expanded navigation rail.
+    private final JFXButton updateShortcut = new JFXButton();
     /// Currently expanded task surface, absent while the floating action is a circle.
     private @Nullable FloatingTaskSurface taskMenu;
     /// Current task identities/statuses; stable updates preserve list scroll position.
@@ -143,10 +145,20 @@ final class OchreShell extends StackPane {
     private long notificationGeneration;
 
     /// Wraps the real navigator with the approved Øchre desktop shell.
+    /// Clock labels exist only while the cover is in clock mode.
+    private @Nullable Label clockTime, clockGreeting;
+    /// Reads the persisted presentation mode independently from artwork selection.
+    private boolean clockMode() { try { return Files.readString(Metadata.HMCL_LOCAL_HOME.resolve("cover-display.txt")).strip().equals("clock"); } catch (IOException ignored) { return false; } }
+    /// Persists the chosen cover presentation and rebuilds the inspector immediately.
+    private void setClockMode(boolean clock) { try { Files.createDirectories(Metadata.HMCL_LOCAL_HOME); Files.writeString(Metadata.HMCL_LOCAL_HOME.resolve("cover-display.txt"), clock ? "clock" : "cover"); refreshInspector(); } catch (IOException error) { LOG.warning("Unable to save cover display", error); } }
+    /// Uses local time and the actual selected account, refreshed by the existing one-second timer.
+    private void updateClock() { if (clockTime == null || clockGreeting == null) return; var now = java.time.LocalTime.now(); clockTime.setText(now.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))); @Nullable var account = org.jackhuang.hmcl.setting.Accounts.getSelectedAccount(); String name = account == null ? "玩家" : account.getProfileName(); clockGreeting.setText((now.getHour() >= 5 && now.getHour() < 11 ? "早上好" : now.getHour() >= 11 && now.getHour() < 18 ? "中午好" : "晚上好") + "，" + name); }
     OchreShell(Decorator decorator) {
         this.decorator = decorator;
         navigator = decorator.getNavigator();
         getStyleClass().add("ochre-shell");
+        setOnDragOver(event -> { if (event.getDragboard().hasFiles() && event.getDragboard().getFiles().stream().anyMatch(file -> file.getName().endsWith(".ochre"))) { event.acceptTransferModes(javafx.scene.input.TransferMode.COPY); event.consume(); } });
+        setOnDragDropped(event -> { var instance = selected(); if (instance != null && event.getDragboard().hasFiles()) { showScriptWorkspace(instance.getInstanceRoot().toAbsolutePath().normalize().toString()); var workspace = (org.jackhuang.hmcl.ui.construct.OchreScriptDrafts)lookup(".ochre-script-workspace"); if (workspace != null) for (var file : event.getDragboard().getFiles()) if (file.getName().endsWith(".ochre")) workspace.importScript(file.toPath()); event.setDropCompleted(workspace != null); event.consume(); } });
         // Content scrolls inside the frame; its preferred height must never enlarge the window chrome.
         setMinSize(0, 0); layout.setMinSize(0, 0); pages.setMinSize(0, 0);
         pageViewport.setMinSize(0, 0); inspector.setMinHeight(0); rail.setMinHeight(0);
@@ -240,7 +252,14 @@ final class OchreShell extends StackPane {
             if (text.isBlank()) return;
             showNotification(text, org.jackhuang.hmcl.server.ServerManager.NOTICE_KIND.get(), animate());
         });
-        getChildren().setAll(layout, compactLaunch, rail, notification);
+        getChildren().setAll(layout, compactLaunch, rail, notification, updateShortcut);
+        updateShortcut.setGraphic(SVG.DOWNLOAD.createIcon(20)); updateShortcut.getStyleClass().add("ochre-primary-action");
+        updateShortcut.setManaged(false); updateShortcut.setVisible(false); updateShortcut.setOnAction(event -> org.jackhuang.hmcl.ui.construct.OchreUpdatePane.show());
+        updateShortcut.layoutXProperty().bind(railReveal.add(30)); updateShortcut.layoutYProperty().bind(heightProperty().subtract(64)); updateShortcut.setPrefHeight(44); updateShortcut.setPrefWidth(180);
+        org.jackhuang.hmcl.upgrade.OchreUpdateService.availableProperty().addListener((observable, before, value) -> { updateShortcut.setText(value == null ? "" : "更新 · " + value.version()); updateShortcut.setVisible(showingHome && value != null); });
+        org.jackhuang.hmcl.upgrade.OchreUpdateService.initialize();
+        org.jackhuang.hmcl.bridge.GameOverlayService.initialize();
+        updateShortcut.resize(180, 44);
         runtimeWatch.getKeyFrames().setAll(new KeyFrame(Duration.seconds(1), event -> refreshRuntime()));
         runtimeWatch.setCycleCount(Timeline.INDEFINITE);
         sceneProperty().addListener((observable, oldScene, scene) -> { if (scene == null) runtimeWatch.stop(); else runtimeWatch.play(); });
@@ -377,6 +396,7 @@ final class OchreShell extends StackPane {
         boolean home = navigator.getCurrentPage() instanceof RootPage;
         boolean changed = showingHome != home || (home && layout.getRight() == null);
         showingHome = home;
+        updateShortcut.setVisible(home && org.jackhuang.hmcl.upgrade.OchreUpdateService.availableProperty().get() != null);
         navigator.setMinWidth(home ? 0 : 660);
         if (getScene() != null) org.jackhuang.hmcl.server.ServerWindowSizing.navigationChanged(getScene().getWindow(), navigator::getCurrentPage);
         navigator.getStyleClass().removeAll("ochre-home-canvas", "ochre-content-panel");
@@ -560,13 +580,13 @@ final class OchreShell extends StackPane {
             }
         });
         cover.setOnMouseClicked(event -> {
-            if (event.getButton() == javafx.scene.input.MouseButton.PRIMARY) chooseCover();
+            if (event.getButton() == javafx.scene.input.MouseButton.PRIMARY && !clockMode()) chooseCover();
         });
         @Nullable Path path = instance == null ? null : coverPath(instance);
         Label hint = new Label(instance == null ? "未选择游戏" : "正在读取版本封面…");
         hint.getStyleClass().add("subtitle-label");
         cover.getChildren().add(hint);
-        if (instance != null) {
+        if (instance != null && !clockMode()) {
             org.jackhuang.hmcl.task.Schedulers.io().execute(() -> {
                 @Nullable Image image = InstanceCoverLoader.load(path, instance);
                 Platform.runLater(() -> {
@@ -576,7 +596,8 @@ final class OchreShell extends StackPane {
                 });
             });
         }
-        ContextMenu menu = new ContextMenu();
+        clockTime = null; clockGreeting = null; if (clockMode()) { clockTime = new Label(); clockTime.setStyle("-fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: -ochre-ink;"); clockGreeting = new Label(); clockGreeting.setStyle("-fx-text-fill: -ochre-ink;"); clockGreeting.setMinWidth(0); clockGreeting.setTextOverrun(javafx.scene.control.OverrunStyle.ELLIPSIS); VBox clock = new VBox(12, clockTime, clockGreeting); clock.setAlignment(Pos.CENTER); clock.setMouseTransparent(true); cover.getChildren().setAll(clock); cover.setAccessibleText("时间显示，右键切换为封面"); updateClock(); }
+        ContextMenu menu = new ContextMenu(); MenuItem showCover = new MenuItem("显示封面"), showTime = new MenuItem("显示时间"); showCover.setOnAction(event -> setClockMode(false)); showTime.setOnAction(event -> setClockMode(true)); menu.getItems().addAll(showCover, showTime);
         MenuItem clear = new MenuItem("恢复版本默认封面");
         clear.setOnAction(event -> {
             @Nullable HMCLGameInstance current = selected();
@@ -630,6 +651,12 @@ final class OchreShell extends StackPane {
         switchGame.setOnAction(event -> open(Controllers.getGameListPage()));
         HBox launchBar = new HBox(5, launch, switchGame);
         HBox.setHgrow(launch, Priority.ALWAYS);
+        if (instance != null && org.jackhuang.hmcl.bridge.BridgeManager.supported(instance)) {
+            String key = instance.getInstanceRoot().toAbsolutePath().normalize().toString();
+            JFXButton tools = new JFXButton(); tools.setGraphic(SVG.OCHRE_WRENCH.createIcon(22)); tools.setAccessibleText("操作游戏"); tools.getStyleClass().add("ochre-launch-wide"); tools.setPrefWidth(48); tools.setMinWidth(44);
+            tools.setOnAction(event -> org.jackhuang.hmcl.bridge.BridgeManager.offer(key, () -> showGameOperations(gameSession(instance), key)));
+            launchBar.getChildren().add(1, tools);
+        }
         VBox information = new VBox(12, cover, title, version, tags, runtime, more, details);
         ScrollPane scrolling = new ScrollPane(information);
         scrolling.setMinSize(0, 0);
@@ -664,6 +691,7 @@ final class OchreShell extends StackPane {
     }
     /// Rebuilds only when readiness changes, deferring visible expansion until the launch modal has closed.
     private void refreshRuntime() {
+        updateClock();
         refreshTaskMenu();
         updateLaunchIcon();
         boolean shouldShow = !showingHome || hasBackgroundWork();
@@ -754,10 +782,31 @@ final class OchreShell extends StackPane {
         var tabs = new org.jackhuang.hmcl.ui.construct.OchreTabs(); VBox.setVgrow(tabs, Priority.ALWAYS);
         tabs.addPage("声音与视频", SVG.SETTINGS.createIcon(18), new org.jackhuang.hmcl.ui.construct.GameOptionsPane(key));
         tabs.addPage("运行日志", SVG.SCRIPT.createIcon(18), new org.jackhuang.hmcl.server.RuntimePanel(session));
-        tabs.addPage("脚本", SVG.SCRIPT.createIcon(18), new org.jackhuang.hmcl.ui.construct.OchreScriptDrafts(key));
+        tabs.addAction("脚本", SVG.SCRIPT.createIcon(18), () -> { pane.sceneProperty().addListener(new javafx.beans.value.ChangeListener<javafx.scene.Scene>() {
+            /// Opens after the modal focus trap and animation have been removed.
+            @Override public void changed(javafx.beans.value.ObservableValue<? extends javafx.scene.Scene> value, javafx.scene.@org.jetbrains.annotations.Nullable Scene before, javafx.scene.@org.jetbrains.annotations.Nullable Scene after) { if (after == null) { pane.sceneProperty().removeListener(this); Platform.runLater(() -> showScriptWorkspace(key)); } }
+        }); pane.fireEvent(new org.jackhuang.hmcl.ui.construct.DialogCloseEvent()); });
         JFXButton folder = new JFXButton("实例文件夹"); folder.setGraphic(SVG.FOLDER.createIcon(18)); folder.setOnAction(event -> FXUtils.openFolder(java.nio.file.Path.of(key)));
         JFXButton close = new JFXButton("关闭"); close.setGraphic(SVG.CLOSE.createIcon(18)); close.setOnAction(event -> pane.fireEvent(new org.jackhuang.hmcl.ui.construct.DialogCloseEvent()));
         pane.getChildren().setAll(title, org.jackhuang.hmcl.bridge.BridgeManager.controls(key), tabs, new FlowPane(10, 8, folder, close)); Controllers.dialog(pane);
+    }
+    /// Replaces launcher content with a full editor surface, retaining the same editor when detached.
+    private void showScriptWorkspace(String key) {
+        var drafts = new org.jackhuang.hmcl.ui.construct.OchreScriptDrafts(key);
+        setOnDragOver(event -> { if (event.getDragboard().hasFiles() && event.getDragboard().getFiles().stream().anyMatch(file -> file.getName().endsWith(".ochre"))) { event.acceptTransferModes(javafx.scene.input.TransferMode.COPY); event.consume(); } });
+        setOnDragDropped(event -> { if (event.getDragboard().hasFiles()) { for (var file : event.getDragboard().getFiles()) if (file.getName().endsWith(".ochre")) drafts.importScript(file.toPath()); event.setDropCompleted(true); event.consume(); } });
+        BorderPane surface = new BorderPane(); surface.setMinSize(0, 0); surface.getProperties().put("ochre.scriptWorkspace", Boolean.TRUE); surface.getStyleClass().addAll("ochre-content-panel", "ochre-script-full"); surface.setPadding(new Insets(16)); surface.setCenter(drafts); decorator.forbidDraggingWindow(surface);
+        JFXButton back = new JFXButton("返回主页"), detach = new JFXButton("在新窗口中打开"); back.setGraphic(SVG.ARROW_BACK.createIcon(20)); detach.setGraphic(SVG.SCRIPT.createIcon(20));
+        HBox heading = new HBox(12, back, new Label("脚本 · " + Path.of(key).getFileName()), detach); heading.setAlignment(Pos.CENTER_LEFT); surface.setTop(heading);
+        back.setOnAction(event -> { drafts.dispose(); getChildren().remove(surface); navigator.clear(); });
+        detach.setOnAction(event -> {
+            getChildren().remove(surface); navigator.clear(); heading.getChildren().removeAll(back, detach);
+            javafx.stage.Stage stage = new javafx.stage.Stage(); stage.setTitle("Øchre Script · " + Path.of(key).getFileName());
+            javafx.scene.Scene scene = new javafx.scene.Scene(surface, 1040, 760);
+            if (getScene() != null) { scene.getStylesheets().addAll(getScene().getStylesheets()); surface.setStyle(getScene().getRoot().getStyle()); }
+            stage.setScene(scene); stage.setMinWidth(620); stage.setMinHeight(450); stage.setOnHidden(event2 -> drafts.dispose()); stage.show();
+        });
+        getChildren().add(surface); surface.toFront(); Platform.runLater(drafts::focusEditor);
     }
     /// Marks a hidden installation with a short outward wave without keeping a permanent animation running.
     private void ripple() {

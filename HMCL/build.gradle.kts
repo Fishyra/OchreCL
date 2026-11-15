@@ -494,6 +494,7 @@ tasks.register<UpdateAddonProjectInfos>("updateModpackProjectInfos") {
 tasks.withType<Test>().configureEach {
     val isolatedWork = layout.buildDirectory.dir("isolated-test-data/work").get().asFile
     workingDir(isolatedWork)
+    systemProperty("ochre.examples", rootProject.rootDir.resolve("examples").absolutePath)
     doFirst { isolatedWork.mkdirs() }
     systemProperty("user.home", layout.buildDirectory.dir("isolated-test-data/user").get().asFile.absolutePath)
     systemProperty("hmcl.dir", layout.buildDirectory.dir("isolated-test-data/local").get().asFile.absolutePath)

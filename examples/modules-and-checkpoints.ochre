@@ -1,0 +1,9 @@
+// Import BOTH this file and common.ochre into the managed script library first.
+import "common.ochre";
+int runs = task.load("example_runs", default=0);
+print("Previous example runs:", runs);
+if (holding_sword()) { print("Holding an item tagged as a sword"); }
+Record current = report_vitals();
+task.save("example_runs", runs + 1);
+// To reset only this example's counter: task.clear("example_runs");
+// A checkpoint stores data, not active inputs or an instruction pointer.

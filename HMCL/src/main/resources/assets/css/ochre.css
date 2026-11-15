@@ -259,3 +259,30 @@
 .ochre-script-output > .content { -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 5 0 0; }
 .ochre-script-output > .title > .text { -fx-fill: -ochre-ink; }
 .ochre-script-output > .title > .arrow-button > .arrow { -fx-background-color: -ochre-ink; }
+
+/* Script preferences share the rounded, theme-aware editor surfaces. */
+.ochre-script-settings .combo-box, .ochre-script-settings .spinner {
+    -fx-background-color: -ochre-muted-surface; -fx-background-insets: 0;
+    -fx-background-radius: 14; -fx-border-width: 0; -fx-padding: 7 12;
+    -fx-pref-width: 320; -fx-min-height: 42;
+}
+.ochre-script-settings .combo-box > .list-cell { -fx-background-color: transparent; -fx-text-fill: -ochre-ink; }
+.ochre-script-settings .spinner > .text-field { -fx-background-color: transparent; -fx-text-fill: -ochre-ink; }
+.ochre-script-settings .spinner > .increment-arrow-button,
+.ochre-script-settings .spinner > .decrement-arrow-button { -fx-background-color: transparent; }
+
+/* Script dialogs retain contrast when their owner is a detached editor window. */
+.ochre-script-confirm .jfx-button { -fx-text-fill: -ochre-ink; }
+.ochre-script-confirm .jfx-button .svg { -fx-fill: -ochre-ink; }
+
+.ochre-script-confirm .text-field { -fx-background-color: -ochre-muted-surface; -fx-background-radius: 10; -fx-border-width: 0; -fx-text-fill: -ochre-ink; -fx-prompt-text-fill: -ochre-muted-ink; -fx-padding: 10 12; }
+
+.ochre-script-confirm .jfx-button.ochre-primary-action { -fx-text-fill: -ochre-action-ink; }
+
+/* Library filenames fit their viewport; source-code scrolling stays independent. */
+.ochre-script-list .scroll-bar:horizontal { -fx-min-height: 0; -fx-pref-height: 0; -fx-max-height: 0; -fx-opacity: 0; -fx-padding: 0; }
+.ochre-script-list .scroll-bar:vertical { -fx-background-color: transparent; -fx-min-width: 8; -fx-pref-width: 8; -fx-max-width: 8; -fx-padding: 0; }
+.ochre-script-list .scroll-bar .track, .ochre-script-list .scroll-bar .track-background { -fx-background-color: transparent; -fx-border-width: 0; }
+.ochre-script-list .scroll-bar .thumb { -fx-background-color: -ochre-muted-ink; -fx-background-radius: 8; -fx-background-insets: 1; }
+.ochre-script-list .scroll-bar .increment-button, .ochre-script-list .scroll-bar .decrement-button { -fx-background-color: transparent; -fx-padding: 0; -fx-pref-height: 0; }
+.ochre-script-list .scroll-bar .increment-arrow, .ochre-script-list .scroll-bar .decrement-arrow { -fx-shape: ""; -fx-padding: 0; -fx-pref-height: 0; }

@@ -1,0 +1,21 @@
+// Observe for 30 seconds. Move, turn, use items, mine/place, open a container.
+// This example only reads state and writes the script output; it does not send chat.
+Record screen = game.screen;
+print("Screen:", screen);
+Record state = player.snapshot();
+if (state.in_world) {
+    print("Vitals:", player.vitals);
+    print("Crosshair:", world.target());
+    print("Current space:", world.collision(player.position));
+    print("Held item tags:", player.item_tags());
+    Record page = player.container_slots();
+    for (slot in page.slots) { print("Slot:", slot); }
+}
+// Drain retained history before reporting new observations.
+for (old in player.events()) { }
+for (int i = 0; i < 150; i++) {
+    for (event in player.events()) {
+        print(event);
+    }
+    sleep(200ms);
+}

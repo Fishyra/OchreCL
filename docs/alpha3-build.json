@@ -1,0 +1,6 @@
+{
+  "version": "0.3.0-alpha.3",
+  "update_jar_sha256": "55f405b22016939309862d65ef74e56275f09b546b2456392ef59d55a2855360",
+  "bridge_jar_sha256": "a5b6f56e8b409ac5aeff5d962965d7afaf9ebf816231e271de6e5b5b291a0b3a",
+  "validation": "44 selected launcher tests; native macOS Minecraft 26.2 vanilla/Fabric fixtures; bridge rebuilt from public sources and entry contents compared"
+}

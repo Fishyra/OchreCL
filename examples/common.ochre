@@ -1,0 +1,9 @@
+// A library module: declarations only, no top-level actions.
+function holding_sword() {
+    return player.item_is("minecraft:swords");
+}
+function report_vitals() {
+    Record health = player.vitals;
+    print("Health:", health.health, "Food:", health.food, "Air:", health.air);
+    return health;
+}

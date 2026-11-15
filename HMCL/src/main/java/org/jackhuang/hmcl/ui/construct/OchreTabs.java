@@ -40,6 +40,8 @@ public final class OchreTabs extends VBox {
         buttons.add(button); header.getChildren().add(button);
         if (buttons.size() == 1) select(button, page);
     }
+    /// Adds navigation that leaves this modal workspace instead of squeezing a page into it.
+    public void addAction(String title, Node icon, Runnable action) { JFXButton button = new JFXButton(title); button.setGraphic(icon); button.getStyleClass().add("ochre-section-tab"); button.setOnAction(event -> action.run()); header.getChildren().add(button); }
     /// Updates section selection without creating any platform tab chrome.
     private void select(JFXButton selected, Node page) {
         var pseudo = PseudoClass.getPseudoClass("selected");

@@ -1,0 +1,73 @@
+// Requires the updated bridge: game.read + chat.send.
+// Messages go to server chat. One announcement per action, with short cooldowns.
+bool ready = false;
+bool wasForward = false;
+bool wasAirborne = false;
+float oldX = 0;
+float oldY = 0;
+float oldZ = 0;
+float oldDy = 0;
+float nextForwardTick = 0;
+float nextJumpTick = 0;
+float nextSwordTick = 0;
+string oldItem = "";
+string oldWorld = "";
+
+while (script.running) {
+    Record state = player.snapshot();
+    if (state.in_world) {
+        float tick = world.game_time;
+        if (!ready || state.world != oldWorld) {
+            oldX = state.x;
+            oldY = state.y;
+            oldZ = state.z;
+            oldDy = 0;
+            oldItem = state.item;
+            oldWorld = state.world;
+            wasAirborne = !state.on_ground;
+            wasForward = false;
+            nextForwardTick = 0;
+            nextJumpTick = 0;
+            nextSwordTick = 0;
+            ready = true;
+        } else {
+            float dx = state.x - oldX;
+            float dy = state.y - oldY;
+            float dz = state.z - oldZ;
+            bool movingForward = state.inputs.forward && !state.inputs.backward
+                && dx * dx + dz * dz > 0.0004;
+            if (movingForward && !wasForward && tick >= nextForwardTick) {
+                chat.send("我正在前进");
+                nextForwardTick = tick + 40;
+            }
+            bool takingOff = !state.on_ground && (!wasAirborne || oldDy <= 0) && dy > 0.02
+                && (state.jumping || state.inputs.jump)
+                && !state.flying && !state.swimming && !state.fallflying;
+            if (takingOff && tick >= nextJumpTick) {
+                chat.send("我正在跳跃");
+                nextJumpTick = tick + 8;
+            }
+            bool holdingSword = state.item == "minecraft:wooden_sword"
+                || state.item == "minecraft:stone_sword"
+                || state.item == "minecraft:copper_sword"
+                || state.item == "minecraft:iron_sword"
+                || state.item == "minecraft:golden_sword"
+                || state.item == "minecraft:diamond_sword"
+                || state.item == "minecraft:netherite_sword";
+            if (state.item != oldItem && holdingSword && tick >= nextSwordTick) {
+                chat.send("我拿起了剑");
+                nextSwordTick = tick + 10;
+            }
+            wasForward = movingForward;
+            wasAirborne = !state.on_ground;
+            oldX = state.x;
+            oldY = state.y;
+            oldZ = state.z;
+            oldDy = dy;
+            oldItem = state.item;
+        }
+    } else {
+        ready = false;
+    }
+    sleep(100ms);
+}

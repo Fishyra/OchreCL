@@ -1,0 +1,101 @@
+// Requires game.read and chat.send. Messages are sent to server chat.
+// Run inside a world. Press Stop to finish (runner limit: about 10 minutes).
+// Item names use registry IDs, including modded items.
+bool ready = false;
+string oldWorld = "";
+string oldItem = "";
+float oldX = 0;
+float oldY = 0;
+float oldZ = 0;
+float oldDy = 0;
+bool wasForward = false;
+bool wasBackward = false;
+bool wasLeft = false;
+bool wasRight = false;
+bool wasAirborne = false;
+float nextForward = 0;
+float nextBackward = 0;
+float nextLeft = 0;
+float nextRight = 0;
+float nextJump = 0;
+
+while (script.running) {
+    Record state = player.snapshot();
+    if (state.in_world) {
+        float tick = world.game_time;
+        if (!ready || state.world != oldWorld) {
+            oldWorld = state.world;
+            oldItem = state.item;
+            oldX = state.x;
+            oldY = state.y;
+            oldZ = state.z;
+            oldDy = 0;
+            wasForward = false;
+            wasBackward = false;
+            wasLeft = false;
+            wasRight = false;
+            wasAirborne = !state.on_ground;
+            nextForward = 0;
+            nextBackward = 0;
+            nextLeft = 0;
+            nextRight = 0;
+            nextJump = 0;
+            ready = true;
+        } else {
+            float dx = state.x - oldX;
+            float dy = state.y - oldY;
+            float dz = state.z - oldZ;
+            bool moved = dx * dx + dz * dz > 0.0004;
+            bool forward = moved && state.inputs.forward && !state.inputs.backward;
+            bool backward = moved && state.inputs.backward && !state.inputs.forward;
+            bool left = moved && state.inputs.left && !state.inputs.right;
+            bool right = moved && state.inputs.right && !state.inputs.left;
+
+            if (forward && !wasForward && tick >= nextForward) {
+                chat.send("我在前进");
+                nextForward = tick + 20;
+            }
+            if (backward && !wasBackward && tick >= nextBackward) {
+                chat.send("我在后退");
+                nextBackward = tick + 20;
+            }
+            if (left && !wasLeft && tick >= nextLeft) {
+                chat.send("我在向左走");
+                nextLeft = tick + 20;
+            }
+            if (right && !wasRight && tick >= nextRight) {
+                chat.send("我在向右走");
+                nextRight = tick + 20;
+            }
+
+            bool takingOff = !state.on_ground && (!wasAirborne || oldDy <= 0)
+                && dy > 0.02 && (state.jumping || state.inputs.jump)
+                && !state.flying && !state.swimming && !state.fallflying;
+            if (takingOff && tick >= nextJump) {
+                chat.send("我在跳跃");
+                nextJump = tick + 8;
+            }
+            if (state.item != oldItem) {
+                if (state.item == "minecraft:air") {
+                    chat.send("我现在空手了");
+                } else {
+                    chat.send("我拿起了 " + state.item);
+                }
+            }
+
+            wasForward = forward;
+            wasBackward = backward;
+            wasLeft = left;
+            wasRight = right;
+            wasAirborne = !state.on_ground;
+            oldX = state.x;
+            oldY = state.y;
+            oldZ = state.z;
+            oldDy = dy;
+            oldItem = state.item;
+        }
+    } else {
+        ready = false;
+    }
+    sleep(100ms);
+}

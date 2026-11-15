@@ -1,0 +1,20 @@
+// Use a disposable test world. Hold a block item before testing placement.
+// The active example only reads and locks the block you are looking at.
+Record target = world.target_block();
+if (target != none) {
+    print("Target:", target.id, target.position, target.face);
+    player.lock_block(target, face=target.face, duration=2s);
+    // Enable exactly the action you want to test:
+    // print(player.mine(target, face=target.face, timeout=15s));
+    // Placement clicks the SUPPORT block, not the destination cell:
+    // print(player.place_block(target, face=target.face));
+}
+
+// Direct text with no focused field normally returns "not_inserted".
+print(input.send_text("Hello"));
+// Optional deliberate chat-box input and a raw key event (not enabled):
+// input.text("Draft only");
+// input.send_key("LEFT", action="press");
+// chat.send("Hello from Ochre Script!");
+// input.key("W", duration=250ms);
+print(script.logs());

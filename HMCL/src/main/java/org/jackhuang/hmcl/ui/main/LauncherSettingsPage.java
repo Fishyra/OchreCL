@@ -34,6 +34,8 @@ public class LauncherSettingsPage extends DecoratorAnimatedPage implements Decor
     private final TabItem<PersonalizationPage> personalizationTab;
     /// The tab for download settings.
     private final TabItem<DownloadSettingsPage> downloadTab;
+    /// Persistent script execution and authorization preferences.
+    private final TabItem<org.jackhuang.hmcl.ui.construct.ScriptSettingsPane> scriptTab;
     /// The tab displaying launcher help.
     private final TabItem<HelpPage> helpTab;
     /// The tab displaying launcher information.
@@ -47,6 +49,7 @@ public class LauncherSettingsPage extends DecoratorAnimatedPage implements Decor
         javaManagementTab = new TabItem<>(JavaManagementPage::new);
         settingsTab = new TabItem<>(SettingsPage::new);
         personalizationTab = new TabItem<>(PersonalizationPage::new);
+        scriptTab = new TabItem<>(org.jackhuang.hmcl.ui.construct.ScriptSettingsPane::new);
         downloadTab = new TabItem<>(DownloadSettingsPage::new);
         helpTab = new TabItem<>(HelpPage::new);
         feedbackTab = new TabItem<>(FeedbackPage::new);
@@ -57,6 +60,7 @@ public class LauncherSettingsPage extends DecoratorAnimatedPage implements Decor
                 settingsTab,
                 personalizationTab,
                 downloadTab,
+                scriptTab,
                 helpTab,
                 feedbackTab,
                 aboutTab);
@@ -71,6 +75,7 @@ public class LauncherSettingsPage extends DecoratorAnimatedPage implements Decor
         addSection(tabs, settingsTab, i18n("settings.launcher.general"));
         addSection(tabs, personalizationTab, i18n("settings.launcher.appearance"));
         addSection(tabs, downloadTab, i18n("download"));
+        addSection(tabs, scriptTab, "脚本");
         getLeft().setVisible(false);
         getLeft().setManaged(false);
         javafx.scene.layout.VBox content = new javafx.scene.layout.VBox(12, tabs, transitionPane);

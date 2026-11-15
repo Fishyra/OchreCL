@@ -97,4 +97,87 @@ public final class OchreScriptTest {
         ScriptGameHost host = new ScriptGameHost("unused-test-instance"); OchreScript.Control control = new OchreScript.Control();
         assertThrows(IllegalArgumentException.class, () -> host.call("player.walk_forward", List.of(3.0), Map.of(), control)); assertThrows(IllegalArgumentException.class, () -> host.call("player.hit", List.of(), Map.of("count", 1.5), control)); assertThrows(IllegalArgumentException.class, () -> host.call("player.hit", List.of(), Map.of("count", 2.0, "interval", new OchreScript.Quantity(1, "time"), "duration", new OchreScript.Quantity(1, "time")), control));
     }
+    /// Retry counts represent additional attempts, and successful recovery continues once.
+    @Test public void boundedFailureRetries() throws Exception {
+        java.util.concurrent.atomic.AtomicInteger attempts = new java.util.concurrent.atomic.AtomicInteger();
+        OchreScript.Host flaky = new OchreScript.Host() {
+            /// Supplies an inert value for deterministic recovery tests.
+            public Object read(String path) { return 0.0; }
+            /// Never changes game data.
+            public void write(String path, Object value) { }
+            /// Fails twice, then records successful recovery.
+            public Object call(String name, List<Object> args, Map<String, Object> named, OchreScript.Control control) { if (attempts.incrementAndGet() < 3) throw new IllegalStateException("Temporary failure"); return OchreScript.Empty.NONE; }
+            /// The fixture owns no resources.
+            public void close() { }
+        };
+        List<String> output = new ArrayList<>(); var program = OchreScript.compile("player.jump(); print(script_repeat_count);");
+        program.run(flaky, program.permissions(), output::add, new OchreScript.Control(OchreScript.FailurePolicy.RETRY_COUNT, 2));
+        assertEquals(3, attempts.get()); assertEquals("2", output.get(output.size() - 1));
+        attempts.set(0);
+        assertThrows(OchreScript.ScriptError.class, () -> program.run(flaky, program.permissions(), value -> {}, new OchreScript.Control(OchreScript.FailurePolicy.RETRY_COUNT, 1)));
+        assertEquals(2, attempts.get());
+    }
+    /// Skipping reports a failed statement and continues, while stop and zero retries terminate.
+    @Test public void skipAndStopFailures() throws Exception {
+        List<String> output = new ArrayList<>(); var program = OchreScript.compile("print(1 / 0); print(7);");
+        program.run(new Host(), Set.of(), output::add, new OchreScript.Control(OchreScript.FailurePolicy.SKIP, 3));
+        assertTrue(output.get(0).contains("Line 1:")); assertEquals("7", output.get(1));
+        for (var policy : List.of(OchreScript.FailurePolicy.STOP, OchreScript.FailurePolicy.RETRY_COUNT))
+            assertThrows(OchreScript.ScriptError.class, () -> program.run(new Host(), Set.of(), value -> fail("Continued after failure"), new OchreScript.Control(policy, 0)));
+        assertThrows(IllegalArgumentException.class, () -> new OchreScript.Control(OchreScript.FailurePolicy.RETRY_COUNT, 101));
+    }
+    /// Persistent retries remain immediately cancellable instead of swallowing the stop signal.
+    @Test public void unboundedRetryCancellation() throws Exception {
+        var control = new OchreScript.Control(OchreScript.FailurePolicy.RETRY, 3); CountDownLatch failed = new CountDownLatch(1); ExecutorService executor = Executors.newSingleThreadExecutor(); Host host = new Host();
+        try {
+            Future<?> future = executor.submit(() -> assertThrows(CancellationException.class, () -> OchreScript.compile("print(1 / 0);").run(host, Set.of(), value -> failed.countDown(), control)));
+            assertTrue(failed.await(2, TimeUnit.SECONDS)); control.cancel(); future.get(2, TimeUnit.SECONDS); assertEquals(1, host.closes);
+        } finally { control.cancel(); executor.shutdownNow(); }
+    }
+    /// Capability discovery covers new builtins without requiring a game read for local retry settings.
+    @Test public void extendedCapabilitiesAndStatementObserver() throws Exception {
+        var program = OchreScript.compile("player.jump(); player.set_state(\"flying\", true); player.move_item(0, 1); player.select_hotbar(2); player.craft(1); game.command(\"time set day\"); player.look_at_block(vec3(1, 2, 3), face=\"north\"); print(player.effects); print(world.nearest_block(\"minecraft:stone\"));");
+        assertEquals(Set.of("player.move", "player.state", "inventory.write", "game.command", "player.look", "game.read"), program.permissions());
+        List<Integer> lines = new ArrayList<>(); OchreScript.Control control = new OchreScript.Control(); control.observe(lines::add);
+        var local = OchreScript.compile("print(script_repeat_count);\nprint(2);"); assertTrue(local.permissions().isEmpty()); local.run(new Host(), Set.of(), value -> {}, control); assertEquals(List.of(1, 2), lines);
+        assertThrows(SecurityException.class, () -> program.run(new Host(), Set.of(), value -> {}, new OchreScript.Control(OchreScript.FailurePolicy.SKIP, 3)));
+    }
+
+    /// Local speech uses no game-control permission and preserves English builtin syntax with Unicode message content.
+    @Test public void speechBuiltinAndDuration() throws Exception {
+        Host host = new Host(); var program = OchreScript.compile("say(\"Hello!\"); say(\"完成\", duration=5s);");
+        assertTrue(program.permissions().isEmpty()); program.run(host, Set.of(), value -> {}, new OchreScript.Control());
+        assertEquals(List.of("say", "say"), host.effects); assertEquals(List.of("完成", new OchreScript.Quantity(5, "time")), host.arguments); assertTrue(host.keywords.isEmpty());
+        Host defaults = new Host(); OchreScript.compile("say(\"Ready\");").run(defaults, Set.of(), value -> {}, new OchreScript.Control());
+        assertEquals(new OchreScript.Quantity(3, "time"), defaults.arguments.get(1));
+        Host positional = new Host(); OchreScript.compile("say(\"Ready\", 500ms);").run(positional, Set.of(), value -> {}, new OchreScript.Control());
+        assertEquals(new OchreScript.Quantity(.5, "time"), positional.arguments.get(1));
+    }
+    /// Malformed bubble commands fail before reaching the game adapter.
+    @Test public void speechValidation() {
+        for (String source : List.of("say();", "say(3);", "say(\"\");", "say(\"a\", 0s);", "say(\"a\", 31s);", "say(\"a\", 3);", "say(\"a\", 1s, duration=2s);", "say(\"a\", unknown=1);", "say(\"" + "x".repeat(257) + "\");")) {
+            Host host = new Host(); assertThrows(OchreScript.ScriptError.class, () -> OchreScript.compile(source).run(host, Set.of(), value -> {}, new OchreScript.Control())); assertTrue(host.effects.isEmpty());
+        }
+    }
+
+    /// Functions support forward calls, isolated locals, named arguments and return through loops.
+    @Test public void functionScopesAndReturns() throws Exception {
+        Host host=new Host(); List<String> output=new ArrayList<>();
+        var program=OchreScript.compile("int global = 3; print(add(b=4, a=2)); function add(a,b) { int local = a + b; for (int i=0; i<2; i++) { return local + global; } return 0; } print(global);");
+        program.run(host,Set.of(),output::add,new OchreScript.Control());assertEquals(List.of("9","3"),output);
+        assertThrows(OchreScript.ScriptError.class,()->OchreScript.compile("return 1;"));
+        assertThrows(OchreScript.ScriptError.class,()->OchreScript.compile("function bad(player) { return player; }"));
+        assertThrows(OchreScript.ScriptError.class,()->OchreScript.compile("function f(a) { return a; } f();").run(new Host(),Set.of(),value->{},new OchreScript.Control()));
+        assertThrows(OchreScript.ScriptError.class,()->OchreScript.compile("function f() { return f(); } f();").run(new Host(),Set.of(),value->{},new OchreScript.Control()));
+    }
+    /// Managed imports are resolved once before authorization and reject cycles, paths and top-level effects.
+    @Test public void managedModulesAndPermissions() throws Exception {
+        Map<String,String> modules=Map.of("common.ochre","function answer() { return 42; } function unused() { player.jump(); }", "left.ochre","import \"common.ochre\";", "right.ochre","import \"common.ochre\";");
+        var program=OchreScript.compile("import \"left.ochre\"; import \"right.ochre\"; print(answer());",name->Objects.requireNonNull(modules.get(name)));
+        assertEquals(Set.of("player.move"),program.permissions());Host host=new Host();assertThrows(SecurityException.class,()->program.run(host,Set.of(),value->{},new OchreScript.Control()));assertTrue(host.effects.isEmpty());
+        List<String> output=new ArrayList<>();program.run(new Host(),program.permissions(),output::add,new OchreScript.Control());assertEquals(List.of("42"),output);
+        for(String name:List.of("../bad.ochre","/bad.ochre"))assertThrows(IllegalArgumentException.class,()->OchreScript.compile("import \""+name+"\";",file->""));
+        assertThrows(IllegalArgumentException.class,()->OchreScript.compile("import \"a.ochre\";",file->"import \"a.ochre\";"));
+        assertThrows(IllegalArgumentException.class,()->OchreScript.compile("import \"a.ochre\";",file->"say(\"No auto effects\");"));
+    }
 }

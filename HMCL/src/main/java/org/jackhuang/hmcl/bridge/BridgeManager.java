@@ -36,6 +36,14 @@ public final class BridgeManager {
     private static Path root(String key) { return Path.of(key).resolve(".ochre-bridge"); }
     /// Reads consent without treating missing configuration as permission.
     public static boolean installed(String key) { try { Properties settings = read(root(key).resolve("settings.properties")); return Boolean.parseBoolean(settings.getProperty("enabled")) && Files.isRegularFile(root(key).resolve(settings.getProperty("agent", "missing"))); } catch (IOException error) { return false; } }
+    /// Checks the bundled revision so an older component requests fresh consent before expanded capabilities.
+    public static boolean current(String key) {
+        if (!installed(key)) return false;
+        try (var input = Objects.requireNonNull(BridgeManager.class.getResourceAsStream(RESOURCE))) {
+            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(input.readAllBytes()));
+            return hash.equals(read(root(key).resolve("settings.properties")).getProperty("sha256"));
+        } catch (Exception error) { return false; }
+    }
     /// Copies the bundled optional component after explicit in-app consent; it is not loaded into an already running JVM.
     public static void install(String key) throws Exception {
         Path folder = root(key); Files.createDirectories(folder); restrict(folder, true);
@@ -49,11 +57,26 @@ public final class BridgeManager {
     /// Validates the component and prepares a fresh launch token; no token is embedded in process arguments.
     public static @Nullable String prepare(HMCLGameInstance instance) throws Exception {
         String key = instance.getInstanceRoot().toAbsolutePath().normalize().toString(); if (!supported(instance) || !installed(key)) return null;
-        Path folder = root(key); Properties settings = read(folder.resolve("settings.properties")); String name = settings.getProperty("agent", ""); if (!name.matches("bridge-[a-f0-9]{64}\\.jar")) throw new IOException("桥接组件路径无效");
-        Path image = folder.resolve(name); byte[] bytes = Files.readAllBytes(image); String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)); if (!hash.equals(settings.getProperty("sha256"))) throw new IOException("桥接组件校验失败，请重新安装");
-        byte[] token = new byte[32]; new java.security.SecureRandom().nextBytes(token); Properties launch = new Properties(); launch.setProperty("enabled", "true"); launch.setProperty("token", HexFormat.of().formatHex(token)); launch.setProperty("version", instance.getVersion().toString());
+        Path folder = root(key); Path image = imageForLaunch(key);
+        byte[] token = new byte[32]; new java.security.SecureRandom().nextBytes(token); Properties launch = new Properties(); launch.setProperty("enabled", "true"); launch.setProperty("token", HexFormat.of().formatHex(token)); launch.setProperty("version", instance.getVersion().toString()); javafx.scene.paint.Color theme = org.jackhuang.hmcl.theme.OchrePalette.color(org.jackhuang.hmcl.theme.Themes.getColorScheme(), org.glavo.monetfx.ColorRole.PRIMARY_CONTAINER); launch.setProperty("theme", String.format(java.util.Locale.ROOT, "#%02x%02x%02x", (int) Math.round(theme.getRed()*255), (int) Math.round(theme.getGreen()*255), (int) Math.round(theme.getBlue()*255)));
+        var scheme = org.jackhuang.hmcl.theme.Themes.getColorScheme(); var palette = org.jackhuang.hmcl.theme.OchrePalette.colors(scheme);
+        for (String role : List.of("ink", "card", "accent")) { var value = role.equals("accent") ? org.jackhuang.hmcl.theme.OchrePalette.color(scheme, org.glavo.monetfx.ColorRole.PRIMARY) : palette.get("-ochre-"+role); launch.setProperty(role, String.format(Locale.ROOT,"#%02x%02x%02x",(int)Math.round(value.getRed()*255),(int)Math.round(value.getGreen()*255),(int)Math.round(value.getBlue()*255))); }
         Path config = folder.resolve("launch.properties"); store(config, launch); Files.deleteIfExists(folder.resolve("connection.properties"));
         return image + "=" + Base64.getUrlEncoder().withoutPadding().encodeToString(config.toString().getBytes(StandardCharsets.UTF_8));
+    }
+    /// Refreshes an already-consented, integrity-checked component from this launcher before a new JVM starts.
+    static Path imageForLaunch(String key) throws Exception {
+        Path folder = root(key); Properties settings = read(folder.resolve("settings.properties"));
+        if (!Boolean.parseBoolean(settings.getProperty("enabled", "false"))) throw new IOException("桥接组件未授权或已停用");
+        String name = settings.getProperty("agent", ""); if (!name.matches("bridge-[a-f0-9]{64}\\.jar")) throw new IOException("桥接组件路径无效");
+        Path image = folder.resolve(name); if (Files.size(image) > 2 * 1024 * 1024) throw new IOException("桥接组件大小无效");
+        String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(image)));
+        if (!hash.equals(settings.getProperty("sha256"))) throw new IOException("桥接组件校验失败，请重新安装");
+        try (var input = Objects.requireNonNull(BridgeManager.class.getResourceAsStream(RESOURCE))) {
+            String expected = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(input.readAllBytes()));
+            if (!expected.equals(hash)) { install(key); image = folder.resolve("bridge-" + expected + ".jar"); }
+        }
+        return image;
     }
     /// Sends one token-authorized loopback request; no scripts, URLs or arbitrary files can be executed by this API.
     public static @Unmodifiable Map<String, String> request(String key, String command, Map<String, String> arguments) throws IOException {
@@ -67,18 +90,18 @@ public final class BridgeManager {
     public static void offer(String key, Runnable opened) { offer(key, opened, false); }
     /// Explicit repair may replace a corrupt local image after repeating the consent disclosure.
     private static void offer(String key, Runnable opened, boolean repair) {
-        if (!repair && installed(key)) { opened.run(); return; }
+        if (!repair && current(key)) { opened.run(); return; }
         VBox pane = new VBox(14); pane.setPadding(new Insets(24)); pane.setPrefWidth(550); pane.setMaxWidth(650); pane.getStyleClass().add("jfx-dialog-layout");
         Label title = new Label("安装 ØchreCL 游戏桥接组件？"); title.setGraphic(SVG.SETTINGS.createIcon(24)); title.getStyleClass().add("ochre-instance-title");
-        Label explanation = new Label("组件让启动器读取此实例的语言、位置与运行状态，并实时修改声音和视频选项。无需手动安装 Fabric 或 Forge；通过启动器挂载，不改写原版游戏文件。\n\n仅开放本机、单实例授权的连接。26.x 接口仍需逐版本验证，当前已对照 26.2 公共 API；不兼容功能会返回不可用。安装后需要重新启动游戏才能连接。"); explanation.setWrapText(true);
-        CheckBox permission = new com.jfoenix.controls.JFXCheckBox("允许该实例连接启动器并修改上述设置"); permission.setWrapText(true);
+        Label explanation = new Label("组件让启动器读取此实例的语言、位置、背包、效果与运行状态，修改声音和视频选项，并显示游戏悬浮球。脚本可在另行授权后请求移动、视角、背包操作和游戏命令；服务器规则仍然有效。无需手动安装 Fabric 或 Forge；通过启动器挂载，不改写原版游戏文件。\n\n仅开放本机、单实例授权的连接。26.x 接口仍需逐版本验证，当前已对照 26.2 公共 API；不兼容功能会返回不可用。安装后需要重新启动游戏才能连接。"); explanation.setWrapText(true);
+        CheckBox permission = new com.jfoenix.controls.JFXCheckBox("允许安装此组件并连接启动器；脚本操作仍需按运行权限设置授权"); permission.setWrapText(true);
         Label status = new Label(); status.setWrapText(true); JFXButton install = new JFXButton("安装并授权"), skip = new JFXButton("暂不安装"), close = new JFXButton("取消"); install.setGraphic(SVG.DOWNLOAD.createIcon(18)); install.disableProperty().bind(permission.selectedProperty().not());
         install.setOnAction(event -> { permission.setDisable(true); status.setText("正在安装本地桥接组件…"); Schedulers.io().execute(() -> { try { install(key); Platform.runLater(() -> { pane.fireEvent(new DialogCloseEvent()); org.jackhuang.hmcl.server.ServerManager.notice("桥接组件已安装，重新启动该游戏后启用"); opened.run(); }); } catch (Exception error) { Platform.runLater(() -> { permission.setDisable(false); status.setText("安装失败：" + error.getMessage()); }); } }); });
         skip.setOnAction(event -> { pane.fireEvent(new DialogCloseEvent()); opened.run(); }); close.setOnAction(event -> pane.fireEvent(new DialogCloseEvent())); pane.getChildren().setAll(title, explanation, permission, status, new FlowPane(10, 8, install, skip, close)); Controllers.dialog(pane);
     }
     /// Adds bridge installation, real handshake and uninstall controls to the operation workspace.
     public static VBox controls(String key) {
-        Label status = new Label(installed(key) ? "已安装 · 等待连接当前游戏" : "未安装桥接组件 · 设置将等待游戏退出后应用"); status.setWrapText(true);
+        Label status = new Label(installed(key) ? (current(key) ? "已安装 · 等待连接当前游戏" : "桥接组件有更新 · 安装 / 修复后重启游戏") : "未安装桥接组件 · 设置将等待游戏退出后应用"); status.setWrapText(true);
         JFXButton connect = new JFXButton("检查游戏连接"), install = new JFXButton("安装 / 修复组件"), remove = new JFXButton("停用组件"); connect.setGraphic(SVG.OCHRE_CONNECT.createIcon(18));
         connect.setOnAction(event -> { connect.setDisable(true); Schedulers.io().execute(() -> { String text; try { var hello = request(key, "hello", Map.of()); text = "已连接 Minecraft " + hello.get("gameVersion") + " · 协议 " + hello.get("protocol") + "\n可用能力：" + hello.get("capabilities"); } catch (Exception error) { text = "尚未连接：" + error.getMessage(); } String message = text; Platform.runLater(() -> { status.setText(message); connect.setDisable(false); }); }); });
         install.setOnAction(event -> offer(key, () -> status.setText(installed(key) ? "已安装；若游戏已在运行，需重启游戏连接" : "未安装"), true));

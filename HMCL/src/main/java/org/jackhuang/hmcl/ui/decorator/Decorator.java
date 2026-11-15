@@ -1148,6 +1148,10 @@ public final class Decorator {
                         newTarget = currentDialogPane.peek().orElseThrow();
                     } else {
                         newTarget = navigator.getCurrentPage();
+                        // Full script workspaces are above the navigator and own their keyboard events.
+                        for (@Nullable Node scope = target; scope != null; scope = scope.getParent()) {
+                            if (Boolean.TRUE.equals(scope.getProperties().get("ochre.scriptWorkspace"))) { newTarget = scope; break; }
+                        }
                     }
                 }
             }
