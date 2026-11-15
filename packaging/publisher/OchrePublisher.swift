@@ -59,6 +59,7 @@ final class Publisher: NSObject, NSApplicationDelegate, NSTextFieldDelegate, NST
     var task: Process?
     var temporary: URL?
     var checked = false
+    let cleanupPlatforms = NSButton(checkboxWithTitle: "发布成功后清理本地四平台安装包", target: nil, action: nil)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu(); let appMenuItem = NSMenuItem(); menu.addItem(appMenuItem)
@@ -104,7 +105,8 @@ final class Publisher: NSObject, NSApplicationDelegate, NSTextFieldDelegate, NST
         let buttons = NSStackView(); buttons.spacing = 10
         check.target = self; check.action = #selector(preflight); check.bezelStyle = .rounded
         publish.target = self; publish.action = #selector(confirmPublish); publish.bezelStyle = .rounded; publish.isEnabled = false
-        buttons.addArrangedSubview(check); buttons.addArrangedSubview(publish)
+        cleanupPlatforms.state = .on; cleanupPlatforms.toolTip = "确认上传并同步官网后，删除本地 DMG、Windows ZIP 和 Linux TAR.GZ。保留 update.jar、源码与校验记录；失败时不清理。"
+        buttons.addArrangedSubview(check); buttons.addArrangedSubview(publish); buttons.addArrangedSubview(cleanupPlatforms)
         root.addArrangedSubview(buttons)
         window.center(); window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
         if ProcessInfo.processInfo.environment["OCHRE_PUBLISHER_UI_SMOKE"] == "1" {
@@ -154,7 +156,7 @@ final class Publisher: NSObject, NSApplicationDelegate, NSTextFieldDelegate, NST
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let noteFile = directory.appendingPathComponent("notes.txt"); try notes.string.write(to: noteFile, atomically: true, encoding: .utf8); temporary = directory
             let process = Process(); process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-            process.arguments = [backend.path, "--full", "--config", config.path, "--jar", jar.path, "--source", sourceInput.path, "--version", version.stringValue, "--notes", noteFile.path] + (publishing ? ["--publish"] : [])
+            process.arguments = [backend.path, "--full", "--config", config.path, "--jar", jar.path, "--source", sourceInput.path, "--version", version.stringValue, "--notes", noteFile.path] + (publishing ? ["--publish"] : []) + (cleanupPlatforms.state == .on ? ["--cleanup-platforms"] : [])
             var env = ProcessInfo.processInfo.environment
             env["PATH"] = NSHomeDirectory() + "/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
             env["PYTHONUNBUFFERED"] = "1"; process.environment = env
@@ -168,17 +170,18 @@ final class Publisher: NSObject, NSApplicationDelegate, NSTextFieldDelegate, NST
             process.terminationHandler = { [weak self] completed in
                 DispatchQueue.main.async {
                     guard let self = self else { return }
-                    self.task = nil; self.version.isEditable = true; self.notes.isEditable = true; self.check.isEnabled = true
+                    self.task = nil; self.cleanupPlatforms.isEnabled = true; self.version.isEditable = true; self.notes.isEditable = true; self.check.isEnabled = true
                     self.checked = completed.terminationStatus == 0 && !publishing; self.publish.isEnabled = self.checked
                     self.status.stringValue = completed.terminationStatus == 0 ? (publishing ? "发布完成，官网部署中。" : "预检通过，请核对日志后发布。") : "未完成，请查看日志。已发布的版本不会被覆盖。"
                     if let directory = self.temporary { try? FileManager.default.removeItem(at: directory) }; self.temporary = nil
                 }
             }
             log.string = ""; check.isEnabled = false; publish.isEnabled = false; version.isEditable = false; notes.isEditable = false
+            cleanupPlatforms.isEnabled = false
             status.stringValue = publishing ? "发布中，请勿关闭窗口…" : "正在本地打包并校验，请稍候…"
             task = process; try process.run()
         } catch {
-            task = nil; check.isEnabled = true; version.isEditable = true; notes.isEditable = true
+            task = nil; cleanupPlatforms.isEnabled = true; check.isEnabled = true; version.isEditable = true; notes.isEditable = true
             status.stringValue = "无法运行：" + error.localizedDescription
         }
     }

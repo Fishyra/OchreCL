@@ -185,6 +185,12 @@ def publish(args):
     command('git', 'push', 'origin', 'main', cwd=site)
     print('发布完成：' + release['html_url'], flush=True)
     print('官网提交已推送，GitHub Pages 仍需等待部署。完整安装包版本未伪造。', flush=True)
+    if args.full and getattr(args, 'cleanup_platforms', False):
+        try:
+            from full_packages import cleanup_platform_assets
+            cleanup_platform_assets(config, assets)
+        except Exception as error:
+            print('发布已成功，但本地清理未完成：' + str(error), flush=True)
 
 
 if __name__ == '__main__':
@@ -192,6 +198,7 @@ if __name__ == '__main__':
     for name in ('config', 'jar', 'source', 'version', 'notes'):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--publish', action='store_true')
+    parser.add_argument('--cleanup-platforms', action='store_true', help='Remove verified local installers only after successful release and website push')
     parser.add_argument('--full', action='store_true', help='Build, verify and publish all four complete distributions')
     try:
         publish(parser.parse_args())

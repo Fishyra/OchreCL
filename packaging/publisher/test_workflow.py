@@ -18,7 +18,7 @@ BASE = Path(__file__).resolve().parents[2]
 
 
 class WorkflowTest(unittest.TestCase):
-    def workflow(self, corrupt=False):
+    def workflow(self, corrupt=False, site_push_fails=False):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); site = root / 'site'; source = root / 'source'; source.mkdir()
             (site / 'ochrecl/assets').mkdir(parents=True); (site / 'ochrecl/docs').mkdir()
@@ -53,15 +53,20 @@ class WorkflowTest(unittest.TestCase):
                 if args[:3] == ('/mock/gh', 'release', 'edit'):
                     self.assertEqual((site / 'ochrecl/index.html').read_text(), original)
                     state['release']['draft'] = False; return ''
+                if args[:3] == ('git', 'push', 'origin') and site_push_fails and sum(c[:3] == ('git', 'push', 'origin') for c in state['calls']) == 2: raise RuntimeError('offline website push failed')
                 if args[0] == 'git': return ''
                 raise AssertionError(args)
-            args = argparse.Namespace(source=str(source), config=str(config), jar=str(BASE / 'builds/0.3.0-alpha.2/OchreCL-update.jar'), version='0.3.0-alpha.3', notes=str(notes), full=True, publish=True)
-            with patch.object(source_snapshot, 'prepare', return_value='1234567890abcdef'), patch.object(publish_update, 'command', side_effect=fake), patch.object(publish_update, 'clean_repo'), patch.object(full_packages, 'build', return_value=files), contextlib.redirect_stdout(io.StringIO()):
-                if corrupt:
+            args = argparse.Namespace(source=str(source), config=str(config), jar=str(BASE / 'builds/0.3.0-alpha.2/OchreCL-update.jar'), version='0.3.0-alpha.3', notes=str(notes), full=True, publish=True, cleanup_platforms=True)
+            with patch.object(full_packages, 'cleanup_platform_assets', return_value=4) as cleanup, patch.object(source_snapshot, 'prepare', return_value='1234567890abcdef'), patch.object(publish_update, 'command', side_effect=fake), patch.object(publish_update, 'clean_repo'), patch.object(full_packages, 'build', return_value=files), contextlib.redirect_stdout(io.StringIO()):
+                if site_push_fails:
+                    with self.assertRaisesRegex(RuntimeError, 'website push failed'): publish_update.publish(args)
+                    cleanup.assert_not_called()
+                    self.assertTrue(all(file.exists() for file in files))
+                elif corrupt:
                     with self.assertRaisesRegex(RuntimeError, '附件与本次不一致'): publish_update.publish(args)
                     self.assertTrue(state['release']['draft'])
                     self.assertEqual((site / 'ochrecl/index.html').read_text(), original)
-                    self.assertFalse(any(c[:3] == ('/mock/gh', 'release', 'edit') for c in state['calls']))
+                    self.assertFalse(any(c[:3] == ('/mock/gh', 'release', 'edit') for c in state['calls'])); cleanup.assert_not_called()
                 else:
                     publish_update.publish(args)
                     self.assertFalse(state['release']['draft'])
@@ -70,7 +75,8 @@ class WorkflowTest(unittest.TestCase):
                     self.assertEqual(page.count('/releases/download/v0.3.0-alpha.3/'), 4)
                     self.assertNotIn('/releases/download/v0.3.0-alpha.2/', page)
                     self.assertEqual((site / 'ochrecl/assets/SHA256SUMS.txt').read_bytes(), sums.read_bytes())
-                    self.assertIn(('git', 'add', 'ochrecl/index.html', 'ochrecl/docs/index.html', 'ochrecl/assets/SHA256SUMS.txt'), state['calls'])
+                    self.assertIn(('git', 'add', 'ochrecl/index.html', 'ochrecl/docs/index.html', 'ochrecl/assets/SHA256SUMS.txt'), state['calls']); cleanup.assert_called_once()
+    def test_website_failure_keeps_local_installers(self): self.workflow(site_push_fails=True)
     def test_full_release_then_website(self): self.workflow()
     def test_digest_mismatch_retains_draft_and_website(self): self.workflow(corrupt=True)
 

@@ -93,6 +93,8 @@ def build(config, jar, version, source, source_head):
     names += ['OchreCL-update.jar', 'OchreCL-source.zip']
     if manifest.exists():
         cached = json.loads(manifest.read_text())
+        if cached.get('platform_cleanup', {}).get('status') in {'planned', 'complete'}:
+            raise RuntimeError('此版本的本地安装包已在发布后清理；发布新更新请填写新的版本号。源码和更新 JAR 仍保留。')
         if cached['identity'] != identity or cached['assets'] != {n: sha(folder / n) for n in names}:
             raise RuntimeError('本地已验证的打包缓存发生变化，请保留后移走该目录再重试')
         print('四种完整安装包已验证，复用本地打包结果。', flush=True)
@@ -116,3 +118,56 @@ def build(config, jar, version, source, source_head):
     manifest.write_text(json.dumps({'identity': identity, 'assets': hashes}, indent=2))
     print('四平台本地打包与校验完成：' + str(folder), flush=True)
     return [folder / n for n in names] + [folder / 'SHA256SUMS.txt']
+
+
+def cleanup_platform_assets(config, assets):
+    """Delete only verified local installer files after the caller confirms the whole publication succeeded."""
+    if not assets:
+        return 0
+    base = Path(config['base']).resolve()
+    parent = base / 'builds/publisher-packages'
+    folder = Path(assets[0]).parent
+    # Never follow a redirected package directory or accept arbitrary user paths as cleanup targets.
+    if (base / 'builds').is_symlink() or parent.is_symlink() or folder.is_symlink() or not parent.resolve().is_relative_to(base) or folder.resolve().parent != parent.resolve():
+        raise RuntimeError('清理目录不属于发布助手的安装包目录，已保留文件')
+    manifest = folder / 'verified.json'
+    if manifest.is_symlink():
+        raise RuntimeError('校验记录不是普通文件，已保留安装包')
+    record = json.loads(manifest.read_text())
+    version = record.get('identity', {}).get('version', '')
+    import re
+    if not re.fullmatch(r'\d+\.\d+\.\d+(?:-(?:alpha|beta|rc)\.\d+)?', version):
+        raise RuntimeError('缺少有效版本记录，已保留安装包')
+    names = [f'OchreCL-{version}-{platform}' for platform in ('macos-arm64.dmg', 'macos-x64.dmg', 'windows-x64.zip', 'linux-x64.tar.gz')]
+    hashes = record.get('assets', {})
+    if set(hashes) != set(names + ['OchreCL-update.jar', 'OchreCL-source.zip']):
+        raise RuntimeError('本地校验记录不完整，已保留安装包')
+    prior = record.get('platform_cleanup', {})
+    expected = {name: hashes[name] for name in names}
+    for name, digest in hashes.items():
+        path = folder / name
+        if path.is_symlink():
+            raise RuntimeError('安装包目录包含符号链接，已停止清理')
+        if not path.exists() and name in names and prior.get('assets') == expected:
+            continue
+        if not path.is_file() or sha(path) != digest:
+            raise RuntimeError('本地文件与已验证的安装包不一致，已停止清理：' + name)
+    # Write the deletion plan first so an interrupted cleanup is recognizable and safely repeatable.
+    record['platform_cleanup'] = {'status': 'planned', 'assets': expected}
+    def save():
+        temporary = manifest.with_suffix('.json.cleanup-new')
+        if temporary.is_symlink():
+            raise RuntimeError('清理记录路径异常')
+        temporary.write_text(json.dumps(record, indent=2))
+        os.replace(temporary, manifest)
+    save()
+    removed = 0
+    for name in names:
+        path = folder / name
+        if path.exists():
+            path.unlink()
+            removed += 1
+    record['platform_cleanup']['status'] = 'complete'
+    save()
+    print('已清理本地四平台安装包；update.jar、源码、校验文件和发布记录已保留。', flush=True)
+    return removed

@@ -1,11 +1,13 @@
 {
   "version": "0.3.0-alpha.5",
-  "update_jar_sha256": "b20f4fefb766afb2fbc9592589031a59b80833f88f27f7f50f6c1508f7b03dbd",
+  "update_jar_sha256": "c3bff0db566e04c7b994d0bcfd2b7e1f04e72a5ad00ddeddac8e5042983a54a1",
   "source_inputs": 1143,
   "changes": [
     "Clock fonts survive CSS reapplication",
     "FOV readback follows integer angle granularity; setting failures preserve overlay",
-    "Publisher requires source folder/ZIP and matching JAR build record"
+    "Publisher requires source folder/ZIP and matching JAR build record",
+    "Completion uses actual caret bounds and avoids the active line at screen edges",
+    "Argument hints reserve a fixed footer without shifting source text"
   ],
-  "validation": "Clock stylesheet reload test and temporary native Fabric 26.2 FOV fixture passed"
+  "validation": "Completion keyboard, wrapped-line and screen-edge placement tests passed; source/JAR fingerprints verified"
 }

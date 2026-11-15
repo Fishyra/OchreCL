@@ -23,7 +23,7 @@ shutil.copy2(HERE / 'full_packages.py', resources / 'full_packages.py')
 shutil.copy2(HERE / 'source_snapshot.py', resources / 'source_snapshot.py')
 shutil.copy2(BASE / 'branding/ochre.icns', resources / 'publisher.icns')
 (resources / 'config.json').write_text(json.dumps({'base': str(BASE), 'source': str(BASE / 'github-publish/OchreCL'), 'website': str(BASE / 'website-publish'), 'gh': str(Path.home() / '.local/bin/gh')}, indent=2))
-(app / 'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleExecutable': 'OchrePublisher', 'CFBundleName': 'OchrePublisher', 'CFBundleDisplayName': 'ØchreCL 发布助手', 'CFBundleIdentifier': 'io.fishyra.ochrecl.publisher.local', 'CFBundleVersion': '4', 'CFBundleShortVersionString': '0.3.0', 'CFBundlePackageType': 'APPL', 'CFBundleIconFile': 'publisher.icns', 'NSHighResolutionCapable': True, 'LSMinimumSystemVersion': '12.0'}))
+(app / 'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleExecutable': 'OchrePublisher', 'CFBundleName': 'OchrePublisher', 'CFBundleDisplayName': 'ØchreCL 发布助手', 'CFBundleIdentifier': 'io.fishyra.ochrecl.publisher.local', 'CFBundleVersion': '5', 'CFBundleShortVersionString': '0.3.1', 'CFBundlePackageType': 'APPL', 'CFBundleIconFile': 'publisher.icns', 'NSHighResolutionCapable': True, 'LSMinimumSystemVersion': '12.0'}))
 subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(app)], check=True)
 subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
 if destination.exists():
