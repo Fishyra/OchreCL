@@ -194,10 +194,10 @@
 /* A single task surface grows from the floating circle, including its radius and hit area. */
 .ochre-task-menu { -fx-padding: 0; }
 .ochre-task-heading, .ochre-task-name { -fx-font-weight: bold; -fx-text-fill: -ochre-ink; }
-.ochre-task-row { -fx-padding: 10 12; -fx-alignment: center-left; -fx-background-color: -ochre-muted-surface; -fx-background-radius: 12; }
+.ochre-task-row { -fx-padding: 6 12; -fx-alignment: center-left; -fx-background-color: -ochre-muted-surface; -fx-background-radius: 12; }
 .ochre-task-row:hover { -fx-background-color: -ochre-selected; }
 .ochre-task-row .svg { -fx-fill: -ochre-ink; }
-.ochre-task-scroll, .ochre-task-scroll > .viewport { -fx-background-color: transparent; }
+.ochre-task-scroll, .ochre-task-scroll .viewport, .ochre-task-scroll .corner { -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 0; }
 .ochre-task-empty { -fx-padding: 20 6; -fx-text-fill: -ochre-muted-ink; }
 
 /* Compact controls keep page content dominant at normal window sizes. */
@@ -286,3 +286,11 @@
 .ochre-script-list .scroll-bar .thumb { -fx-background-color: -ochre-muted-ink; -fx-background-radius: 8; -fx-background-insets: 1; }
 .ochre-script-list .scroll-bar .increment-button, .ochre-script-list .scroll-bar .decrement-button { -fx-background-color: transparent; -fx-padding: 0; -fx-pref-height: 0; }
 .ochre-script-list .scroll-bar .increment-arrow, .ochre-script-list .scroll-bar .decrement-arrow { -fx-shape: ""; -fx-padding: 0; -fx-pref-height: 0; }
+
+/* Caret-anchored completion inherits the current light/dark theme. */
+.ochre-completion { -fx-background-color: -ochre-card; -fx-background-radius: 12; -fx-border-color: -ochre-muted-ink; -fx-border-radius: 12; -fx-border-width: 0.5; -fx-padding: 6; -fx-effect: dropshadow(gaussian, rgba(0,0,0,.18), 14, 0, 0, 4); }
+.ochre-completion-list, .ochre-completion-list .virtual-flow, .ochre-completion-list .clipped-container, .ochre-completion-list .sheet { -fx-background-color: transparent; }
+.ochre-completion-list .list-cell { -fx-background-color: transparent; -fx-text-fill: -ochre-ink; -fx-font-family: 'Menlo', 'Consolas', monospace; -fx-padding: 5 10; -fx-background-radius: 7; }
+.ochre-completion-list .list-cell:selected { -fx-background-color: -ochre-selected; -fx-text-fill: -ochre-selected-ink; }
+.ochre-completion-list .scroll-bar:horizontal { -fx-pref-height: 0; -fx-max-height: 0; -fx-opacity: 0; }
+.ochre-completion-detail { -fx-padding: 10; -fx-font-size: 12px; -fx-text-fill: -ochre-muted-ink; }

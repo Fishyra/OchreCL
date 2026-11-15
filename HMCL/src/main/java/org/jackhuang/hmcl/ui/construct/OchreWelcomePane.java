@@ -61,6 +61,17 @@ public final class OchreWelcomePane extends BorderPane {
                 choice.setOnAction(event -> { var appearance = SettingsManager.settings(); appearance.themeColorTypeProperty().set(color.equals("#F7F1E5") ? ThemeColorType.DEFAULT : ThemeColorType.CUSTOM); appearance.customThemeColorProperty().set(ThemeColor.of(javafx.scene.paint.Color.web(color))); appearance.getThemeAppearanceOverrides().add(LauncherSettings.THEME_APPEARANCE_COLOR); }); colors.getChildren().add(choice);
             }
             appearancePane.getChildren().add(colors);
+            RadioButton coverChoice = new RadioButton("游戏封面"), clockChoice = new RadioButton("大字时钟");
+            coverChoice.setId("ochre-welcome-cover"); clockChoice.setId("ochre-welcome-clock");
+            ToggleGroup displayChoice = new ToggleGroup(); coverChoice.setToggleGroup(displayChoice); clockChoice.setToggleGroup(displayChoice);
+            (CoverDisplay.isClock() ? clockChoice : coverChoice).setSelected(true);
+            Label displayHint = new Label(CoverDisplay.isClock() ? "主页显示时钟、日期和你的专属问候。" : "主页显示当前游戏的封面图片。"); displayHint.setWrapText(true);
+            for (RadioButton choice : new RadioButton[]{coverChoice, clockChoice}) choice.setOnAction(event -> {
+                try { CoverDisplay.setClock(clockChoice.isSelected()); displayHint.setText(CoverDisplay.isClock() ? "主页显示时钟、日期和你的专属问候。" : "主页显示当前游戏的封面图片。"); }
+                catch (java.io.IOException error) { (CoverDisplay.isClock() ? clockChoice : coverChoice).setSelected(true); displayHint.setText("选择未能保存，请重试。之后也可右键主页封面切换。"); }
+            });
+            FlowPane displayChoices = new FlowPane(18, 10, coverChoice, clockChoice);
+            VBox display = new VBox(10, new Label("主页展示"), displayChoices, displayHint); display.setId("ochre-welcome-cover-display"); display.setPadding(new Insets(12, 0, 0, 0)); appearancePane.getChildren().add(display);
             javafx.scene.shape.SVGPath palette = new javafx.scene.shape.SVGPath(); palette.setContent("M55 8 C22 8 5 33 8 62 C11 89 40 110 57 98 C69 89 52 78 67 73 C78 68 103 81 109 57 C115 31 88 8 55 8 Z"); palette.getStyleClass().add("ochre-welcome-palette");
             javafx.scene.Group dots = new javafx.scene.Group(palette); int colorIndex = 0; for (String color : new String[]{"#7CAEB1", "#9BAE8B", "#B6A2C7", "#D4A05C"}) { double angle = Math.PI + .5 + colorIndex++ * .65; dots.getChildren().add(new javafx.scene.shape.Circle(57 + 32 * Math.cos(angle), 56 + 32 * Math.sin(angle), 7, javafx.scene.paint.Color.web(color))); }
             VBox artwork = new VBox(18, dots, new Label("挑选你的颜色。")); artwork.setAlignment(javafx.geometry.Pos.CENTER); artwork.setPrefWidth(170); artwork.setMinWidth(150); artwork.visibleProperty().bind(content.widthProperty().greaterThan(570)); artwork.managedProperty().bind(artwork.visibleProperty());

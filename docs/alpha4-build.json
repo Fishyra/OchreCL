@@ -1,0 +1,6 @@
+{
+  "version": "0.3.0-alpha.4",
+  "update_jar_sha256": "f2fde0c032f6eff2c432bce72649e59871f1c4f44b12ff2e59677d2d7887b11f",
+  "source_note": "The public release tag was created against the previous source snapshot. The follow-up source commit contains the alpha.4 editor/clock changes; release notes link to that exact commit. Downloaded update binaries are unchanged.",
+  "validation": "Editor popup keyboard acceptance and completion contracts; clock responsive layout; onboarding cover choice and compact task rows."
+}

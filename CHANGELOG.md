@@ -1,3 +1,7 @@
+## 0.3.0-alpha.4
+
+Add source-aware local completions and call hints to the script editor, redesign the inspector clock, share the cover/clock preference with onboarding, and compact the floating task rows.
+
 ## 0.3.0-alpha.3
 
 Expand scripting with input/action observations, geometry and container queries, function/import support, managed checkpoints, script workspace fixes and in-game overlay improvements. See docs/OCHRE_SCRIPT.md for the complete command reference.

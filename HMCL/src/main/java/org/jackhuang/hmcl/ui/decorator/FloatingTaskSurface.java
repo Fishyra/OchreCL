@@ -54,7 +54,7 @@ public final class FloatingTaskSurface extends VBox {
         this.host = host; this.anchor = anchor; this.closed = closed;
         getStyleClass().add("ochre-task-menu"); setManaged(false); setMinSize(0, 0); setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); setClip(clipping);
         Label title = new Label("正在执行的任务"); title.setGraphic(SVG.INFO.createIcon(18)); title.getStyleClass().add("ochre-task-heading");
-        ScrollPane scroll = new ScrollPane(entries); scroll.setFitToWidth(true); scroll.setMinSize(0, 0); scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); scroll.getStyleClass().add("ochre-task-scroll"); VBox.setVgrow(scroll, Priority.ALWAYS);
+        ScrollPane scroll = new ScrollPane(entries); entries.setMinHeight(Region.USE_PREF_SIZE); scroll.setFitToWidth(true); scroll.setMinSize(0, 0); scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); scroll.getStyleClass().add("ochre-task-scroll"); scroll.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;"); VBox.setVgrow(scroll, Priority.ALWAYS);
         JFXButton reset = new JFXButton("恢复悬浮球位置"); reset.setGraphic(SVG.RESTORE.createIcon(16));
         reset.setOnAction(event -> close(resetPosition));
         JFXButton collapse = new JFXButton("收起"); collapse.setGraphic(SVG.CLOSE.createIcon(16)); collapse.setOnAction(event -> close(() -> {}));
@@ -95,7 +95,7 @@ public final class FloatingTaskSurface extends VBox {
     /// Computes actual width/height, position, clipping and radius for every animation frame.
     private void draw() {
         double amount = extent.get(), availableWidth = Math.max(56, host.getWidth() - 24), availableHeight = Math.max(56, host.getHeight() - 24);
-        double targetWidth = Math.min(360, availableWidth), targetHeight = Math.min(Math.min(460, availableHeight), Math.max(160, 108 + entries.getChildren().size() * 66));
+        double targetWidth = Math.min(360, availableWidth), targetHeight = Math.min(Math.min(460, availableHeight), Math.max(160, 104 + entries.getChildren().size() * 58));
         double targetX = Math.max(12, Math.min(host.getWidth() - targetWidth - 12, anchor.getLayoutX() + 56 - targetWidth));
         double targetY = Math.max(12, Math.min(host.getHeight() - targetHeight - 12, anchor.getLayoutY() + 56 - targetHeight));
         double width = 56 + (targetWidth - 56) * amount, height = 56 + (targetHeight - 56) * amount;

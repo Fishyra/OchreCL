@@ -146,14 +146,15 @@ final class OchreShell extends StackPane {
 
     /// Wraps the real navigator with the approved Øchre desktop shell.
     /// Clock labels exist only while the cover is in clock mode.
-    private @Nullable Label clockTime, clockGreeting;
+    private @Nullable OchreClockView clockView;
     /// Reads the persisted presentation mode independently from artwork selection.
-    private boolean clockMode() { try { return Files.readString(Metadata.HMCL_LOCAL_HOME.resolve("cover-display.txt")).strip().equals("clock"); } catch (IOException ignored) { return false; } }
+    private boolean clockMode() { return org.jackhuang.hmcl.setting.CoverDisplay.isClock(); }
     /// Persists the chosen cover presentation and rebuilds the inspector immediately.
-    private void setClockMode(boolean clock) { try { Files.createDirectories(Metadata.HMCL_LOCAL_HOME); Files.writeString(Metadata.HMCL_LOCAL_HOME.resolve("cover-display.txt"), clock ? "clock" : "cover"); refreshInspector(); } catch (IOException error) { LOG.warning("Unable to save cover display", error); } }
+    private void setClockMode(boolean clock) { try { org.jackhuang.hmcl.setting.CoverDisplay.setClock(clock); refreshInspector(); } catch (IOException error) { LOG.warning("Unable to save cover display", error); } }
     /// Uses local time and the actual selected account, refreshed by the existing one-second timer.
-    private void updateClock() { if (clockTime == null || clockGreeting == null) return; var now = java.time.LocalTime.now(); clockTime.setText(now.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))); @Nullable var account = org.jackhuang.hmcl.setting.Accounts.getSelectedAccount(); String name = account == null ? "玩家" : account.getProfileName(); clockGreeting.setText((now.getHour() >= 5 && now.getHour() < 11 ? "早上好" : now.getHour() >= 11 && now.getHour() < 18 ? "中午好" : "晚上好") + "，" + name); }
+    private void updateClock() { if (clockView == null) return; @Nullable var account = org.jackhuang.hmcl.setting.Accounts.getSelectedAccount(); clockView.update(java.time.LocalDateTime.now(), account == null ? "玩家" : account.getProfileName()); }
     OchreShell(Decorator decorator) {
+        org.jackhuang.hmcl.setting.CoverDisplay.clockProperty().addListener(observable -> refreshInspector());
         this.decorator = decorator;
         navigator = decorator.getNavigator();
         getStyleClass().add("ochre-shell");
@@ -575,7 +576,7 @@ final class OchreShell extends StackPane {
         cover.setFocusTraversable(true);
         cover.setOnKeyPressed(event -> {
             if (event.getCode() == javafx.scene.input.KeyCode.ENTER || event.getCode() == javafx.scene.input.KeyCode.SPACE) {
-                chooseCover();
+                if (!clockMode()) chooseCover();
                 event.consume();
             }
         });
@@ -596,7 +597,7 @@ final class OchreShell extends StackPane {
                 });
             });
         }
-        clockTime = null; clockGreeting = null; if (clockMode()) { clockTime = new Label(); clockTime.setStyle("-fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: -ochre-ink;"); clockGreeting = new Label(); clockGreeting.setStyle("-fx-text-fill: -ochre-ink;"); clockGreeting.setMinWidth(0); clockGreeting.setTextOverrun(javafx.scene.control.OverrunStyle.ELLIPSIS); VBox clock = new VBox(12, clockTime, clockGreeting); clock.setAlignment(Pos.CENTER); clock.setMouseTransparent(true); cover.getChildren().setAll(clock); cover.setAccessibleText("时间显示，右键切换为封面"); updateClock(); }
+        clockView = null; if (clockMode()) { clockView = new OchreClockView(); cover.setMinHeight(212); cover.setPrefHeight(212); cover.setMaxHeight(212); cover.getChildren().setAll(clockView); cover.setAccessibleText("时间显示，右键切换为封面"); updateClock(); }
         ContextMenu menu = new ContextMenu(); MenuItem showCover = new MenuItem("显示封面"), showTime = new MenuItem("显示时间"); showCover.setOnAction(event -> setClockMode(false)); showTime.setOnAction(event -> setClockMode(true)); menu.getItems().addAll(showCover, showTime);
         MenuItem clear = new MenuItem("恢复版本默认封面");
         clear.setOnAction(event -> {
@@ -768,11 +769,11 @@ final class OchreShell extends StackPane {
     }
     /// One accessible task shortcut using a themed icon, a name and an explicit running status.
     private JFXButton taskRow(String title, String status, SVG icon, Runnable action) {
-        Label name = new Label(title); name.setWrapText(true); name.getStyleClass().add("ochre-task-name");
-        Label subtitle = new Label(status); subtitle.setWrapText(true); subtitle.getStyleClass().add("subtitle-label");
-        VBox text = new VBox(3, name, subtitle); text.setMinWidth(0); HBox.setHgrow(text, Priority.ALWAYS);
+        Label name = new Label(title); name.setMinWidth(0); name.setMaxWidth(Double.MAX_VALUE); name.setWrapText(false); name.setTextOverrun(OverrunStyle.ELLIPSIS); name.setTooltip(new Tooltip(title)); name.getStyleClass().add("ochre-task-name");
+        Label subtitle = new Label(status); subtitle.setMinWidth(0); subtitle.setMaxWidth(Double.MAX_VALUE); subtitle.setWrapText(false); subtitle.setTextOverrun(OverrunStyle.ELLIPSIS); subtitle.getStyleClass().add("subtitle-label");
+        VBox text = new VBox(1, name, subtitle); text.setMinWidth(0); HBox.setHgrow(text, Priority.ALWAYS);
         HBox line = new HBox(10, icon.createIcon(22), text); line.setMinWidth(0); line.setAlignment(Pos.CENTER_LEFT);
-        JFXButton row = new JFXButton(); row.getStyleClass().add("ochre-task-row"); row.setAccessibleText(title + "，" + status); row.setGraphic(line); row.setMaxWidth(Double.MAX_VALUE); line.prefWidthProperty().bind(row.widthProperty().subtract(24)); row.setOnAction(event -> action.run()); return row;
+        JFXButton row = new JFXButton(); row.getStyleClass().add("ochre-task-row"); row.setAccessibleText(title + "，" + status); row.setGraphic(line); row.setMaxWidth(Double.MAX_VALUE); row.setMinHeight(52); row.setPrefHeight(52); row.setMaxHeight(52); line.prefWidthProperty().bind(row.widthProperty().subtract(24)); row.setOnAction(event -> action.run()); return row;
     }
 
     /// Opens game controls inside the launcher, with live logs and explicit stop confirmation.
