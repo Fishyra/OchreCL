@@ -1,0 +1,9 @@
+// Replace these with the feet coordinates of a nearby block you can stand on.
+Vec3 destination = vec3(100, 64, 200);
+// Set this to true only if you want to build a short bridge with the selected blocks.
+bool allowBridge = false;
+say("开始自动寻路", duration=1s);
+string result = player.walk_to(destination, timeout=30s, bridge=allowBridge);
+if (result == "arrived") {
+    say("已到达目标", duration=2s);
+}

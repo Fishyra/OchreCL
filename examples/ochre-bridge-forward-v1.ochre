@@ -1,0 +1,80 @@
+// Face the intended crossing. Stop on solid ground immediately beside the gap.
+function ochre_bridge_material(item) {
+    return item == "minecraft:cobblestone" || item == "minecraft:cobbled_deepslate"
+        || item == "minecraft:stone" || item == "minecraft:dirt" || item == "minecraft:netherrack"
+        || item == "minecraft:oak_planks" || item == "minecraft:spruce_planks"
+        || item == "minecraft:birch_planks" || item == "minecraft:jungle_planks"
+        || item == "minecraft:acacia_planks" || item == "minecraft:dark_oak_planks"
+        || item == "minecraft:cherry_planks";
+}
+
+function ochre_bridge_forward() {
+    Record start = player.snapshot();
+    if (!start.in_world || !start.on_ground) {
+        say("请先站到悬崖边的实心地面上");
+        return false;
+    }
+    float yaw = (start.yaw % 360 + 360) % 360;
+    int dx = 0;
+    int dz = 0;
+    if (yaw >= 315 || yaw < 45) { dz = 1; }
+    else if (yaw < 135) { dx = -1; }
+    else if (yaw < 225) { dz = -1; }
+    else { dx = 1; }
+
+    int gap = 0;
+    Vec3 landing;
+    bool found = false;
+    for (int step = 1; step <= 4 && !found; step++) {
+        Vec3 feet = vec3(start.x + dx * step, start.y, start.z + dz * step);
+        Record space = world.collision(feet);
+        if (space.can_stand) {
+            landing = feet;
+            found = true;
+        } else {
+            Record floor = world.block(vec3(feet.x, feet.y - 1, feet.z));
+            if (!space.clear || !floor.air) {
+                say("正前方有障碍，无法搭直桥");
+                return false;
+            }
+            gap++;
+        }
+    }
+    if (!found || gap == 0) {
+        say("前方需要有一至三格缺口，且对岸要和脚下同高");
+        return false;
+    }
+
+    int index = 0;
+    int free_hotbar = -1;
+    int material = -1;
+    for (slot in player.inventory.slots) {
+        if (slot == none) {
+            if (index < 9 && free_hotbar < 0) { free_hotbar = index; }
+        } else if (slot.slot < 36 && slot.count >= gap && ochre_bridge_material(slot.id)) {
+            if (material < 0 || slot.slot < material) { material = slot.slot; }
+        }
+        index++;
+    }
+    if (material < 0) {
+        say("背包需要一组足够的实心建筑方块，例如圆石");
+        return false;
+    }
+    if (material >= 9) {
+        if (free_hotbar < 0) {
+            say("请空出一个快捷栏格子，便于从背包取出方块");
+            return false;
+        }
+        player.move_item(material, free_hotbar);
+        sleep(250ms);
+        material = free_hotbar;
+    }
+    player.select_hotbar(material);
+    Record held = player.snapshot();
+    if (!ochre_bridge_material(held.item) || held.count < gap) {
+        say("游戏没有确认切换到足量的建筑方块");
+        return false;
+    }
+    string result = player.walk_to(landing, timeout=30s, bridge=true);
+    return result == "arrived";
+}

@@ -1,0 +1,5 @@
+// ØchreCL official script module v1.0. Requires game.read.
+function ochre_survival_ready(min_health, min_food) {
+    Record vitals = player.vitals;
+    return vitals.alive && vitals.health >= min_health && vitals.food >= min_food;
+}

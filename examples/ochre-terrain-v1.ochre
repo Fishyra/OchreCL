@@ -1,0 +1,11 @@
+// ØchreCL official script module v1.0. Requires game.read.
+function ochre_terrain_check(position) {
+    Record footing = world.collision(position);
+    if (!footing.can_stand) {
+        return "落脚点没有足够空间或支撑";
+    }
+    if (!world.path_clear(position)) {
+        return "落脚点可站立，但直线有障碍";
+    }
+    return "落脚点可站立，直线无碰撞";
+}

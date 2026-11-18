@@ -17,6 +17,15 @@ public final class ScriptFoundationsTest {
         var input = OchreScript.compile("input.send_key(65, action=\"press\"); input.send_text(\"hello\"); input.text(\"draft\"); chat.send(\"sent\"); print(game.logs());"); assertEquals(Set.of("input.keys", "input.text", "chat.send", "logs.read"), input.permissions());
         assertThrows(SecurityException.class, () -> mine.run(new InertHost(), Set.of("world.break"), line -> {}, new OchreScript.Control()));
     }
+    /// Walking alone never requests placement; a dynamic bridge option cannot bypass preflight.
+    @Test public void navigationPermissions() {
+        Set<String> walking = Set.of("game.read", "player.look", "player.move");
+        assertEquals(walking, OchreScript.compile("player.walk_to(vec3(2, 64, 4));").permissions());
+        assertEquals(walking, OchreScript.compile("player.walk_to(vec3(2, 64, 4), bridge=false);").permissions());
+        var bridge = OchreScript.compile("bool build = true; player.walk_to(vec3(2, 64, 4), bridge=build);");
+        assertEquals(Set.of("game.read", "player.look", "player.move", "world.place"), bridge.permissions());
+        assertThrows(SecurityException.class, () -> bridge.run(new InertHost(), walking, line -> {}, new OchreScript.Control()));
+    }
     /// Record variables and observed event members work with ordinary branching and loops.
     @Test public void recordsAndRunLogs() throws Exception {
         var p = OchreScript.compile("Record sample = player.snapshot(); print(sample.position.x); for (event in player.events()) { if (event.type == \"hotbar\") { print(event.to_slot); } } List lines = script.logs(); print(lines.length);");

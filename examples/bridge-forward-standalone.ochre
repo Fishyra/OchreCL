@@ -1,0 +1,91 @@
+function bridge_material(item) {
+    return item == "minecraft:cobblestone" || item == "minecraft:cobbled_deepslate"
+        || item == "minecraft:stone" || item == "minecraft:dirt" || item == "minecraft:netherrack"
+        || item == "minecraft:oak_planks" || item == "minecraft:spruce_planks"
+        || item == "minecraft:birch_planks" || item == "minecraft:jungle_planks"
+        || item == "minecraft:acacia_planks" || item == "minecraft:dark_oak_planks"
+        || item == "minecraft:cherry_planks";
+}
+
+function equip_bridge_block() {
+    Record held = player.snapshot();
+    if (held.count > 0 && bridge_material(held.item)) { return true; }
+    int index = 0;
+    int empty_hotbar = -1;
+    int candidate = -1;
+    for (slot in player.inventory.slots) {
+        if (slot == none) {
+            if (index < 9 && empty_hotbar < 0) { empty_hotbar = index; }
+        } else if (slot.slot < 36 && slot.count > 0 && bridge_material(slot.id)) {
+            if (candidate < 0 || slot.slot < candidate) { candidate = slot.slot; }
+        }
+        index++;
+    }
+    if (candidate < 0) {
+        say("停止：背包没有可用的建筑方块");
+        return false;
+    }
+    if (candidate >= 9) {
+        if (empty_hotbar < 0) {
+            say("停止：请空出一个快捷栏格子");
+            return false;
+        }
+        player.move_item(candidate, empty_hotbar);
+        sleep(250ms);
+        candidate = empty_hotbar;
+    }
+    player.select_hotbar(candidate);
+    Record selected = player.snapshot();
+    if (selected.count > 0 && bridge_material(selected.item)) { return true; }
+    say("停止：游戏没有确认手持方块");
+    return false;
+}
+
+function bridge_forward() {
+    Record start = player.snapshot();
+    if (!start.in_world || !start.on_ground) {
+        say("停止：请先站在实心地面上");
+        return false;
+    }
+    float yaw = (start.yaw % 360 + 360) % 360;
+    int dx = 0;
+    int dz = 0;
+    if (yaw >= 315 || yaw < 45) { dz = 1; }
+    else if (yaw < 135) { dx = -1; }
+    else if (yaw < 225) { dz = -1; }
+    else { dx = 1; }
+
+    int built = 0;
+    while (true) {
+        Record current = player.snapshot();
+        if (!current.in_world || current.world != start.world || !current.on_ground) {
+            say("停止：世界或脚下状态已变化");
+            return false;
+        }
+        Vec3 next = vec3(current.x + dx, current.y, current.z + dz);
+        Record space = world.collision(next);
+        if (!space.clear) {
+            say("停止：前方被挡住");
+            return false;
+        }
+        if (space.can_stand && built > 0) {
+            player.walk_to(next, timeout=6s, straight=true);
+            say("已到达对岸，搭路结束");
+            return true;
+        }
+        if (space.can_stand) {
+            player.walk_to(next, timeout=6s, straight=true);
+        } else {
+            Record floor = world.block(vec3(next.x, next.y - 1, next.z));
+            if (!floor.air) {
+                say("停止：前方不能放置建筑方块");
+                return false;
+            }
+            if (!equip_bridge_block()) { return false; }
+            player.walk_to(next, timeout=6s, bridge=true, straight=true);
+            built++;
+        }
+    }
+}
+
+bridge_forward();

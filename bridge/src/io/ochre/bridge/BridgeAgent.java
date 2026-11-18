@@ -68,13 +68,15 @@ public final class BridgeAgent {
         Object options = client.getClass().getField("options").get(client); Map<String, String> response = new LinkedHashMap<>(); response.put("gameVersion", game); response.put("bridgeVersion", "0.3.0-alpha");
         StringBuilder capabilities = new StringBuilder("state.read,script.inventory,script.players,script.look,script.move,script.hit,script.release,script.jump,script.command,script.effects,script.state.set,script.hotbar,script.inventory.move,script.recipes,script.craft.place,script.craft.ready,script.craft.take,script.nearest,overlay.sync,overlay.say,script.inspect,script.target,script.collision,script.item.tags,script.container.read,script.container.act,script.input.read,script.context,script.ui.close,script.observe,script.snapshot,script.block.read,script.block.target,script.block.mine,script.block.place,script.block.stop,script.input.key,script.input.text,script.input.heartbeat,script.input.release,script.chat");
         for (String name : OPTIONS) try { option(options, name); capabilities.append(',').append("option.").append(name); } catch (ReflectiveOperationException ignored) { }
-        response.put("capabilities", capabilities.toString());
+        response.put("capabilities", capabilities.append(",script.nav.plan,script.nav.step").toString());
         PlayerObservations.ensure(client);
         String command = request.getOrDefault("command", "hello");
         switch (command) {
             case "script.window.focus" -> { Object window = call(client, "getWindow"); Class<?> glfw = Class.forName("org.lwjgl.glfw.GLFW", false, client.getClass().getClassLoader()); long handle = ((Number)call(window, "handle")).longValue(); glfw.getMethod("glfwFocusWindow", long.class).invoke(null, handle); response.put("status", "requested"); }
             case "script.target" -> WorldQueries.target(client,response);
             case "script.collision" -> WorldQueries.collision(client,request,response);
+            case "script.nav.plan" -> Navigation.plan(client, request, response);
+            case "script.nav.step" -> Navigation.step(client, request, response);
             case "script.item.tags" -> WorldQueries.tags(client,response);
             case "script.container.read" -> ContainerActions.read(client,request,response);
             case "script.container.act" -> ContainerActions.act(client,request,response);

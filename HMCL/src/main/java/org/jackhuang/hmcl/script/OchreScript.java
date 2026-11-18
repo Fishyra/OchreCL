@@ -228,7 +228,9 @@ public final class OchreScript {
             }
             if (name.equals("sleep")) { if (arguments.size() != 1 || !keywords.isEmpty()) throw new IllegalArgumentException("sleep expects one duration"); context.control.sleep(quantity(arguments.get(0), "time")); return Empty.NONE; }
             if (name.equals("vec3")) { if (arguments.size() != 3 || !keywords.isEmpty()) throw new IllegalArgumentException("vec3 expects x, y, z"); return Map.of("x", number(arguments.get(0)), "y", number(arguments.get(1)), "z", number(arguments.get(2))); }
-            for (String permission : additionalPermissions(name)) context.permit(permission); context.permit(CALLS.getOrDefault(name, "unsupported")); Object result = context.host.call(name, List.copyOf(arguments), Map.copyOf(keywords), context.control); context.control.check(); return result;
+            for (String permission : additionalPermissions(name)) context.permit(permission);
+            if (mayBuildBridge(name, positional, named)) context.permit("world.place");
+            context.permit(CALLS.getOrDefault(name, "unsupported")); Object result = context.host.call(name, List.copyOf(arguments), Map.copyOf(keywords), context.control); context.control.check(); return result;
         }
     }
     /// Wraps runtime errors with the source statement's location, preserving cancellation.
@@ -270,7 +272,14 @@ public final class OchreScript {
     /// Compares numeric operands.
     private static boolean compare(double a, double b, String operator) { return switch (operator) { case "<" -> a < b; case "<=" -> a <= b; case ">" -> a > b; case ">=" -> a >= b; default -> throw new IllegalArgumentException("Unknown operator: " + operator); }; }
     /// Compound actions require both inspection and camera control before any side effect.
-    private static @Unmodifiable Set<String> additionalPermissions(String name) { return Set.of("player.lock_block", "player.mine", "player.place_block").contains(name) ? Set.of("game.read", "player.look") : Set.of(); }
+    private static @Unmodifiable Set<String> additionalPermissions(String name) { return Set.of("player.lock_block", "player.mine", "player.place_block", "player.walk_to").contains(name) ? Set.of("game.read", "player.look") : Set.of(); }
+    /// Requests placement permission up front whenever a walk may enable bridging.
+    private static boolean mayBuildBridge(String name, List<Expr> positional, Map<String, Expr> named) {
+        if (!name.equals("player.walk_to")) return false;
+        @Nullable Expr bridge = named.get("bridge");
+        if (bridge == null && positional.size() > 2) bridge = positional.get(2);
+        return bridge != null && !(bridge instanceof Literal literal && Boolean.FALSE.equals(literal.value()));
+    }
     /// Checks declared types on initialization and every later assignment.
     private static void type(String type, Object value) { if (value == Empty.UNINITIALIZED) return; boolean valid = switch (type) { case "int" -> value instanceof Double d && d == Math.rint(d) && Math.abs(d) <= 2_147_483_647; case "float" -> value instanceof Double; case "bool" -> value instanceof Boolean; case "string" -> value instanceof String; case "Player" -> value == Empty.NONE || value instanceof Map<?, ?> map && map.containsKey("id"); case "Vec3" -> value instanceof Map<?, ?> map && map.keySet().containsAll(Set.of("x", "y", "z")); case "any" -> true; case "Record" -> value == Empty.NONE || value instanceof Map<?, ?>; case "List" -> value instanceof List<?>; default -> false; }; if (!valid) throw new IllegalArgumentException("Value does not match type " + type); }
     /// Recursive-descent parser with explicit allowlists and bounded recursion.
@@ -338,7 +347,7 @@ public final class OchreScript {
             if (match("(")) { Expr expr = expression(); need(")"); return expr; }
             if (token.text.matches("[0-9]+(?:\\.[0-9]+)?")) { at++; double value = finite(Double.parseDouble(token.text)); String unit = peek().text; if (Set.of("s", "ms", "blocks", "deg").contains(unit)) { at++; return new Literal(new Quantity(unit.equals("ms") ? value / 1000 : value, unit.equals("s") || unit.equals("ms") ? "time" : unit.equals("blocks") ? "distance" : "angle")); } return new Literal(value); }
             StringBuilder path = new StringBuilder(identifier()); while (match(".")) path.append('.').append(identifier()); String name = path.toString();
-            if (match("(")) { if (!CALLS.containsKey(name) && !declaredFunctions.contains(name) && !Set.of("print", "sleep", "vec3", "say", "script.logs").contains(name)) throw error("Unknown function: " + name); if (CALLS.containsKey(name)) permissions.add(CALLS.get(name)); permissions.addAll(additionalPermissions(name)); List<Expr> positional = new ArrayList<>(); Map<String, Expr> named = new LinkedHashMap<>(); if (!match(")")) { do { if (at + 1 < tokens.size() && tokens.get(at + 1).text.equals("=")) { String key = identifier(); need("="); if (named.containsKey(key)) throw error("Duplicate argument: " + key); named.put(key, expression()); } else { if (!named.isEmpty()) throw error("Positional argument follows named argument"); positional.add(expression()); } } while (match(",")); need(")"); } return new Call(name, List.copyOf(positional), Collections.unmodifiableMap(named)); }
+            if (match("(")) { if (!CALLS.containsKey(name) && !declaredFunctions.contains(name) && !Set.of("print", "sleep", "vec3", "say", "script.logs").contains(name)) throw error("Unknown function: " + name); if (CALLS.containsKey(name)) permissions.add(CALLS.get(name)); permissions.addAll(additionalPermissions(name)); List<Expr> positional = new ArrayList<>(); Map<String, Expr> named = new LinkedHashMap<>(); if (!match(")")) { do { if (at + 1 < tokens.size() && tokens.get(at + 1).text.equals("=")) { String key = identifier(); need("="); if (named.containsKey(key)) throw error("Duplicate argument: " + key); named.put(key, expression()); } else { if (!named.isEmpty()) throw error("Positional argument follows named argument"); positional.add(expression()); } } while (match(",")); need(")"); } if (mayBuildBridge(name, positional, named)) permissions.add("world.place"); return new Call(name, List.copyOf(positional), Collections.unmodifiableMap(named)); }
             if (!name.equals("script_repeat_count") && (READS.contains(name) || WRITES.contains(name) || READS.stream().anyMatch(base -> name.startsWith(base + ".")))) permissions.add("game.read"); return new Name(name);
         }
     }

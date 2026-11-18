@@ -58,7 +58,7 @@ public final class OchreScriptDrafts extends BorderPane {
     private javafx.animation.@Nullable ParallelTransition switchMotion;
     /// Builds a script workspace scoped to the actual selected game instance.
     public OchreScriptDrafts(String key) {
-        this.key = key; editor.setTextFormatter(new TextFormatter<>(this::limitSource)); setPadding(new Insets(12)); setMinSize(0, 0); getStyleClass().add("ochre-script-workspace"); editor.getStyleClass().add("ochre-script-editor"); console.getStyleClass().add("ochre-script-console"); list.getStyleClass().add("ochre-script-list"); editor.setPromptText(EXAMPLE); editor.setWrapText(true); editor.setStyle("-fx-font-family: 'Menlo', 'Consolas', monospace; -fx-font-size: 12px;"); console.setEditable(false); console.setWrapText(true); console.setPrefRowCount(5); console.setMinHeight(65); status.setWrapText(true); JFXButton help = new JFXButton(); help.setGraphic(SVG.HELP.createIcon(22)); help.setAccessibleText("脚本帮助文档"); help.setTooltip(new Tooltip("打开 Øchre Script 命令参考")); help.setOnAction(event -> org.jackhuang.hmcl.ui.FXUtils.openLink("https://fishyra.github.io/ochrecl/docs/script/")); detach.setVisible(false); detach.setManaged(false); detach.setOnAction(event -> detachEditor()); Region toolbarSpace = new Region(); HBox.setHgrow(toolbarSpace, Priority.ALWAYS); HBox toolbar = new HBox(10, status, toolbarSpace, help, detach); toolbar.setAlignment(javafx.geometry.Pos.CENTER_LEFT); setTop(toolbar); BorderPane.setMargin(toolbar, new Insets(0, 0, 10, 0));
+        this.key = key; editor.setTextFormatter(new TextFormatter<>(this::limitSource)); setPadding(new Insets(12)); setMinSize(0, 0); getStyleClass().add("ochre-script-workspace"); editor.getStyleClass().add("ochre-script-editor"); console.getStyleClass().add("ochre-script-console"); list.getStyleClass().add("ochre-script-list"); editor.setPromptText(EXAMPLE); editor.setWrapText(true); editor.setStyle("-fx-font-family: 'Menlo', 'Consolas', monospace; -fx-font-size: 12px;"); console.setEditable(false); console.setWrapText(true); console.setPrefRowCount(5); console.setMinHeight(65); status.setWrapText(true); JFXButton help = new JFXButton(); help.setGraphic(SVG.HELP.createIcon(22)); help.setAccessibleText("脚本帮助文档"); help.setTooltip(new Tooltip("打开 Øchre Script 命令参考")); help.setOnAction(event -> org.jackhuang.hmcl.ui.FXUtils.openLink("https://fishyra.github.io/ochrecl/docs/script/")); detach.setVisible(false); detach.setManaged(false); detach.setOnAction(event -> detachEditor()); JFXButton plugins = new JFXButton("获取脚本插件"); plugins.setOnAction(event -> browsePlugins()); Region toolbarSpace = new Region(); HBox.setHgrow(toolbarSpace, Priority.ALWAYS); HBox toolbar = new HBox(10, status, toolbarSpace, plugins, help, detach); toolbar.setAlignment(javafx.geometry.Pos.CENTER_LEFT); setTop(toolbar); BorderPane.setMargin(toolbar, new Insets(0, 0, 10, 0));
         list.setMinWidth(80); list.setPrefWidth(180); list.setCellFactory(view -> new ListCell<>() {
             { setMinWidth(0); prefWidthProperty().bind(javafx.beans.binding.Bindings.max(0, view.widthProperty().subtract(24))); maxWidthProperty().bind(prefWidthProperty()); setTextOverrun(OverrunStyle.ELLIPSIS); setEllipsisString("…"); }
             /// Shows only filenames rather than private absolute paths.
@@ -88,6 +88,100 @@ public final class OchreScriptDrafts extends BorderPane {
     private void animateScriptChange() { if (switchMotion != null) switchMotion.stop(); var fade = new javafx.animation.FadeTransition(javafx.util.Duration.millis(140), editor); fade.setFromValue(.35); fade.setToValue(1); var move = new javafx.animation.TranslateTransition(javafx.util.Duration.millis(140), editor); move.setFromX(5); move.setToX(0); switchMotion = new javafx.animation.ParallelTransition(fade, move); switchMotion.play(); }
     /// Moves this exact buffer and run to a new stage and restores it when the stage closes.
     private void detachEditor() { if (!(getParent() instanceof VBox parent)) return; int index = parent.getChildren().indexOf(this); @Nullable var previousScene = getScene(); JFXButton restore = new JFXButton("脚本已在独立窗口打开 · 显示窗口"); parent.getChildren().set(index, restore); var host = new BorderPane(this); host.getStyleClass().add("ochre-content-panel"); host.setPadding(new Insets(16)); var stage = new javafx.stage.Stage(); stage.setTitle("Øchre Script · " + Path.of(key).getFileName()); var scene = new javafx.scene.Scene(host, 1040, 760); if (previousScene != null) { scene.getStylesheets().addAll(previousScene.getStylesheets()); host.setStyle(previousScene.getRoot().getStyle()); } stage.setScene(scene); stage.setMinWidth(620); stage.setMinHeight(450); detach.setDisable(true); restore.setOnAction(event -> { stage.show(); stage.toFront(); }); stage.setOnHidden(event -> { host.setCenter(null); detach.setDisable(false); if (restore.getParent() == parent) parent.getChildren().set(index, this); else dispose(); }); stage.show(); focusEditor(); }
+    /// Opens a searchable catalogue with separate details and explicit download/install controls.
+    private void browsePlugins() {
+        TextField search = new TextField();
+        search.setPromptText("搜索脚本插件");
+        JFXButton reload = new JFXButton("刷新"), install = new JFXButton("下载并安装"), close = new JFXButton("关闭");
+        JFXButton website = new JFXButton("打开官网");
+        website.setOnAction(event -> org.jackhuang.hmcl.ui.FXUtils.openLink("https://fishyra.github.io/ochrecl/script-plugins/"));
+        Label message = new Label(), title = new Label("脚本插件"), details = new Label("选择一个插件查看用法");
+        title.getStyleClass().add("ochre-instance-title");
+        message.setWrapText(true);
+        details.setWrapText(true);
+        var catalogue = javafx.collections.FXCollections.<OchrePluginCatalog.Plugin>observableArrayList();
+        var matches = new javafx.collections.transformation.FilteredList<>(catalogue);
+        var results = new ListView<>(matches);
+        results.setPlaceholder(new Label("没有可显示的插件"));
+        results.setMinWidth(140);
+        results.setCellFactory(view -> new ListCell<>() {
+            /// Lists stable catalogue names with their plugin versions.
+            @Override protected void updateItem(OchrePluginCatalog.@Nullable Plugin plugin, boolean empty) {
+                super.updateItem(plugin, empty);
+                setText(empty || plugin == null ? null : plugin.name() + "  ·  v" + plugin.version());
+            }
+        });
+        TextArea example = new TextArea();
+        example.setEditable(false);
+        example.setWrapText(true);
+        example.setPrefRowCount(4);
+        var busy = new javafx.beans.property.SimpleBooleanProperty(false);
+        search.textProperty().addListener((observable, old, query) -> {
+            String term = query.strip().toLowerCase(Locale.ROOT);
+            matches.setPredicate(plugin -> (plugin.name() + " " + plugin.file() + " " + plugin.description()).toLowerCase(Locale.ROOT).contains(term));
+        });
+        results.getSelectionModel().selectedItemProperty().addListener((observable, old, plugin) -> {
+            details.setText(plugin == null ? "选择一个插件查看用法" : plugin.description() + "\n需要 ØchreCL " + plugin.requires() + " 或更新版本");
+            example.setText(plugin == null ? "" : plugin.example());
+        });
+        install.disableProperty().bind(busy.or(results.getSelectionModel().selectedItemProperty().isNull()));
+        reload.disableProperty().bind(busy);
+        VBox preview = new VBox(10, details, example);
+        preview.setMinWidth(160);
+        VBox.setVgrow(example, Priority.ALWAYS);
+        SplitPane split = new SplitPane(results, preview);
+        split.setDividerPositions(.34);
+        VBox.setVgrow(split, Priority.ALWAYS);
+        HBox filters = new HBox(8, search, reload);
+        HBox.setHgrow(search, Priority.ALWAYS);
+        VBox pane = new VBox(12, title, filters, split, message, new FlowPane(8, 8, install, website, close));
+        pane.setPadding(new Insets(20));
+        pane.setPrefSize(640, 430);
+        var stage = showWorkspaceDialog(pane);
+        close.setOnAction(event -> closeWorkspaceDialog(stage));
+        reload.setOnAction(event -> {
+            busy.set(true);
+            message.setText("正在加载官方插件目录…");
+            WORKERS.execute(() -> {
+                try {
+                    var items = OchrePluginCatalog.load();
+                    Platform.runLater(() -> {
+                        if (!stage.isShowing()) return;
+                        catalogue.setAll(items);
+                        results.getSelectionModel().selectFirst();
+                        busy.set(false);
+                        message.setText("已加载 " + items.size() + " 个插件。安装后可在脚本中 import。");
+                    });
+                } catch (Exception error) {
+                    Platform.runLater(() -> { busy.set(false); message.setText("目录暂不可用：" + error.getMessage()); });
+                }
+            });
+        });
+        install.setOnAction(event -> {
+            OchrePluginCatalog.@Nullable Plugin plugin = results.getSelectionModel().getSelectedItem();
+            if (plugin == null) return;
+            busy.set(true);
+            message.setText("正在下载并校验 " + plugin.name() + "…");
+            WORKERS.execute(() -> {
+                try {
+                    Path file = OchrePluginCatalog.install(ROOT, plugin);
+                    Platform.runLater(() -> {
+                        if (!list.getItems().contains(file)) {
+                            int index = Collections.binarySearch(list.getItems(), file);
+                            list.getItems().add(-index - 1, file);
+                        }
+                        busy.set(false);
+                        String text = "已安装 " + file.getFileName() + "。复制右侧示例到你的主脚本即可使用。";
+                        message.setText(text);
+                        status.setText(text);
+                    });
+                } catch (Exception error) {
+                    Platform.runLater(() -> { busy.set(false); message.setText("安装失败：" + error.getMessage()); });
+                }
+            });
+        });
+        reload.fire();
+    }
     /// Opens rounded dialogs on this workspace's own window, including detached script editors.
     private javafx.stage.Stage showWorkspaceDialog(Region content) {
         @Nullable var scene = getScene(); @Nullable javafx.stage.Window owner = scene == null ? Controllers.getStage() : scene.getWindow(); var stage = new javafx.stage.Stage(javafx.stage.StageStyle.TRANSPARENT); if (owner != null) { stage.initOwner(owner); stage.initModality(javafx.stage.Modality.WINDOW_MODAL); }

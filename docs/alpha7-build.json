@@ -1,0 +1,10 @@
+{
+  "version": "0.3.0-alpha.7",
+  "update_jar_sha256": "7c0d118e4f5153542998dce84b2c98a41d951c597116c69c143ed8ca3d41bda2",
+  "source_inputs": 1145,
+  "changes": [
+    "Short walk-to navigation with detours, one-block level changes and optional bridging",
+    "Searchable official script plugin catalogue with verified, non-overwriting downloads",
+    "Standalone bridge script that replenishes its held block and builds one step at a time without a predefined landing"
+  ]
+}

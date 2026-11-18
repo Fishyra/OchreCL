@@ -13,7 +13,7 @@ public final class ScriptActions {
     /// Last game-thread heartbeat deadline.
     private static long expires;
     /// Keys changed by the current lease, retained so disconnect can still release them.
-    private static Object forward, sprint;
+    private static Object forward, sprint, sneak;
     /// Client executor used only to queue one outstanding cleanup operation.
     private static volatile Executor clientExecutor;
     /// Watchdog work remains bounded even if the client thread stalls.
@@ -85,10 +85,22 @@ public final class ScriptActions {
         if (owner.isEmpty()) { Object options = field(client, "options"); forward = field(options, "keyUp"); sprint = field(options, "keySprint"); if ((Boolean) call(forward, "isDown") || (Boolean) call(sprint, "isDown")) { forward = null; sprint = null; throw new IOException("control.key.already.held"); } owner = next; }
         clientExecutor = (Executor) client; expires = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(750); setKey(forward, true); setKey(sprint, Boolean.parseBoolean(sprinting));
     }
+    /// Uses the movement owner for short navigation pulses and owns sneak only while bridging.
+    static void navigate(Object client, String next, boolean crouch, boolean advance) throws Exception {
+        if (crouch && sneak == null && (Boolean) call(field(field(client, "options"), "keyShift"), "isDown"))
+            throw new IOException("walk_to.sneak_key_already_held");
+        move(client, Map.of("owner", next, "sprint", "false"));
+        expires = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(180);
+        if (crouch && sneak == null) sneak = field(field(client, "options"), "keyShift");
+        if (sneak != null) setKey(sneak, crouch);
+        if (!advance) setKey(forward, false);
+    }
+    /// Stops one navigation owner without touching another script's controls.
+    static void stopNavigation(String next) throws Exception { if (owner.equals(next)) release(); }
     /// Sets ordinary and toggle-style keys idempotently; repeated heartbeats must never toggle sprint off.
     private static void setKey(Object key, boolean down) throws Exception { if ((Boolean) call(key, "isDown") == down) return; key.getClass().getMethod("setDown", boolean.class).invoke(key, down); if ((Boolean) call(key, "isDown") != down) key.getClass().getMethod("setDown", boolean.class).invoke(key, true); if ((Boolean) call(key, "isDown") != down) throw new IOException("control.key.mode.unsupported"); }
     /// Releases both retained keys and keeps ownership for watchdog retries if a key API fails.
-    private static void release() throws Exception { Exception failure = null; for (Object key : new Object[]{forward, sprint}) if (key != null) try { setKey(key, false); } catch (Exception error) { if (failure == null) failure = error; else failure.addSuppressed(error); } if (failure != null) throw failure; forward = null; sprint = null; owner = ""; expires = 0; }
+    private static void release() throws Exception { Exception failure = null; for (Object key : new Object[]{forward, sprint, sneak}) if (key != null) try { setKey(key, false); } catch (Exception error) { if (failure == null) failure = error; else failure.addSuppressed(error); } if (failure != null) throw failure; forward = null; sprint = null; sneak = null; owner = ""; expires = 0; }
     /// Performs an ordinary attack against the actual crosshair entity, honoring reach, cooldown and spectator state.
     private static void hit(Object client, Object player) throws Exception {
         interactive(client); if ((Boolean) call(player, "isSpectator")) throw new IOException("permission.attack.spectator"); if (((Number) player.getClass().getMethod("getAttackStrengthScale", float.class).invoke(player, 0f)).doubleValue() < .99) throw new IOException("attack.cooldown"); Object hit = field(client, "hitResult"); if (hit == null || !hit.getClass().getName().equals("net.minecraft.world.phys.EntityHitResult")) throw new IOException("attack.no.entity.under.crosshair"); Object target = call(hit, "getEntity"); ClassLoader loader = client.getClass().getClassLoader(); Class<?> entityType = Class.forName("net.minecraft.world.entity.Entity", false, loader), playerType = Class.forName("net.minecraft.world.entity.player.Player", false, loader); if (!(Boolean) player.getClass().getMethod("isWithinEntityInteractionRange", entityType, double.class).invoke(player, target, 0d)) throw new IOException("attack.out.of.reach"); Object mode = field(client, "gameMode"); if (mode == null) throw new IOException("game.not.ready"); mode.getClass().getMethod("attack", playerType, entityType).invoke(mode, player, target);

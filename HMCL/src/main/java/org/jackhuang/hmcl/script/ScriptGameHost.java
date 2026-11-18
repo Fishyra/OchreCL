@@ -115,11 +115,75 @@ public final class ScriptGameHost implements OchreScript.Host {
         }
         if (name.equals("world.find_player") || name.equals("world.nearby_players")) { boolean find = name.equals("world.find_player"); var args = bind(positional, named, find ? "name" : "radius"); double radius = find ? 128 : args.containsKey("radius") ? OchreScript.number(arg(args, "radius")) : 16; if (radius <= 0 || radius > 128) throw new IllegalArgumentException("Radius must be in (0, 128]"); String target = find ? String.valueOf(arg(args, "name")) : ""; var snapshot = request("script.players", Map.of("radius", Double.toString(radius), "name", target)); List<Object> players = new ArrayList<>(); int count = Integer.parseInt(required(snapshot, "players")); if (count < 0 || count > 16) throw new IllegalArgumentException("Invalid player list"); for (int i = 0; i < count; i++) { String p = "entity." + i + "."; players.add(Map.of("id", required(snapshot, p + "id"), "name", required(snapshot, p + "name"), "position", vector(snapshot, p + "x", p + "y", p + "z"))); } return find ? players.isEmpty() ? OchreScript.Empty.NONE : players.get(0) : List.copyOf(players); }
         if (name.equals("player.walk_forward") || name.equals("player.run_forward")) { var args = bind(positional, named, "amount", "timeout"); Object value = arg(args, "amount"); if (!(value instanceof OchreScript.Quantity amount) || !Set.of("time", "distance").contains(amount.dimension()) || amount.value() <= 0 || amount.value() > (amount.dimension().equals("time") ? 60 : 128)) throw new IllegalArgumentException("Expected 0..60s or 0..128blocks"); double timeout = duration(args, "timeout", amount.dimension().equals("time") ? amount.value() + 2 : 30); if (timeout <= 0 || timeout > 60) throw new IllegalArgumentException("Timeout must be in (0s, 60s]"); var initial = request("state.read", Map.of()); double x = Double.parseDouble(required(initial, "player.X")), z = Double.parseDouble(required(initial, "player.Z")); long started = control.now(); try { while (true) { control.check(); double elapsed = (control.now() - started) / 1e9; if (amount.dimension().equals("time") && elapsed >= amount.value()) break; if (elapsed >= timeout) throw new IllegalArgumentException("Movement timed out; no teleport was performed"); var state = request("state.read", Map.of()); if (amount.dimension().equals("distance") && Math.hypot(Double.parseDouble(required(state, "player.X")) - x, Double.parseDouble(required(state, "player.Z")) - z) >= amount.value()) break; request("script.move", Map.of("owner", owner, "sprint", Boolean.toString(name.equals("player.run_forward")))); acquired = true; control.sleep(.1); } } finally { release(); } return OchreScript.Empty.NONE; }
-        if (name.equals("player.walk_to")) throw new IllegalArgumentException("Capability unavailable: walk_to requires a pathfinding adapter; no teleport was performed");
+        if (name.equals("player.walk_to")) return walkTo(bind(positional, named, "position", "timeout", "bridge", "straight"), control);
         if (name.equals("player.look") || name.equals("player.look_at")) { boolean target = name.equals("player.look_at"); var args = target ? bind(positional, named, "target", "point", "duration") : bind(positional, named, "yaw", "pitch", "duration"); double seconds = duration(args, "duration", 0); if (seconds < 0 || seconds > 10) throw new IllegalArgumentException("Look duration must be in [0s, 10s]"); Map<String, String> fields = new LinkedHashMap<>(); if (target) { Object value = arg(args, "target"); if (!(value instanceof Map<?, ?> map)) throw new IllegalArgumentException("Target is missing; check target != none"); if (map.containsKey("id")) fields.put("target", String.valueOf(map.get("id"))); else { for (String axis : List.of("x", "y", "z")) { @Nullable Object coordinate = map.get(axis); if (coordinate == null) throw new IllegalArgumentException("Expected Player or Vec3"); fields.put(axis, Double.toString(OchreScript.number(coordinate))); } } fields.put("point", String.valueOf(args.getOrDefault("point", "eyes"))); } else { fields.put("yaw", Double.toString(angle(arg(args, "yaw")))); fields.put("pitch", Double.toString(angle(arg(args, "pitch")))); }
             var start = request("state.read", Map.of()); double yaw = Double.parseDouble(required(start, "player.YRot")), pitch = Double.parseDouble(required(start, "player.XRot")); int frames = Math.max(1, (int) Math.ceil(seconds * 20)); for (int i = 1; i <= frames; i++) { control.check(); Map<String, String> frame = new LinkedHashMap<>(fields); frame.put("startYaw", Double.toString(yaw)); frame.put("startPitch", Double.toString(pitch)); frame.put("fraction", Double.toString((double) i / frames)); request("script.look", frame); if (i < frames) control.sleep(seconds / frames); } return OchreScript.Empty.NONE; }
         if (name.equals("player.hit")) { var args = bind(positional, named, "count", "interval", "duration"); double count = OchreScript.number(arg(args, "count")); if (count < 1 || count > 100 || count != Math.rint(count)) throw new IllegalArgumentException("Attack count must be an integer in [1, 100]"); if (args.containsKey("interval") && args.containsKey("duration")) throw new IllegalArgumentException("Choose interval or duration, not both"); double spacing = args.containsKey("duration") ? duration(args, "duration", 0) / Math.max(1, count - 1) : duration(args, "interval", 1); if (spacing < .1 || spacing > 60 || spacing * (count - 1) > 120) throw new IllegalArgumentException("Attack schedule exceeds limits"); for (int i = 0; i < count; i++) { control.check(); request("script.hit", Map.of()); if (i + 1 < count) control.sleep(spacing); } return OchreScript.Empty.NONE; }
         throw new IllegalArgumentException("Unknown game function: " + name);
+    }
+    /// Plans once, verifies each movement pulse, and releases only this run's movement on every exit.
+    private Object walkTo(Map<String, Object> args, OchreScript.Control control) throws Exception {
+        if (!(arg(args, "position") instanceof Map<?, ?> position)) throw new IllegalArgumentException("walk_to requires a Vec3 feet position");
+        double timeout = duration(args, "timeout", 30);
+        if (timeout <= 0 || timeout > 60) throw new IllegalArgumentException("walk_to timeout must be in (0s, 60s]");
+        if (!(args.getOrDefault("bridge", false) instanceof Boolean bridge))
+            throw new IllegalArgumentException("walk_to bridge expects true or false");
+        if (!(args.getOrDefault("straight", false) instanceof Boolean straight))
+            throw new IllegalArgumentException("walk_to straight expects true or false");
+        StringJoiner coordinates = new StringJoiner(",");
+        for (String axis : List.of("x", "y", "z")) {
+            @Nullable Object raw = position.get(axis);
+            double value = OchreScript.number(raw);
+            int limit = axis.equals("y") ? 2048 : 30_000_000;
+            if (Math.floor(value) < -limit || value > limit) throw new IllegalArgumentException("walk_to coordinate out of range: " + axis);
+            coordinates.add(Integer.toString((int) Math.floor(value)));
+        }
+        control.check();
+        ensureGameplay(control);
+        String world = required(request("script.context", Map.of()), "world");
+        long deadline = control.now() + (long) (timeout * 1e9);
+        @Unmodifiable Map<String, String> plan;
+        try {
+            plan = request("script.nav.plan", Map.of("world", world, "goal", coordinates.toString(), "bridge", bridge.toString(), "straight", straight.toString()));
+        } catch (java.io.IOException error) {
+            if ("command.unsupported".equals(error.getMessage()))
+                throw new IllegalArgumentException("walk_to needs the updated game bridge; restart the instance", error);
+            throw error;
+        }
+        String from = required(plan, "start"), route = required(plan, "route");
+        if (route.isEmpty()) return "arrived";
+        control.check();
+        acquired = true;
+        try {
+            navigateStep(world, from, from, false, deadline, control);
+            for (String entry : route.split(";")) {
+                int separator = entry.lastIndexOf(',');
+                String to = entry.substring(0, separator);
+                navigateStep(world, from, to, Boolean.parseBoolean(entry.substring(separator + 1)), deadline, control);
+                from = to;
+            }
+        } catch (Exception | Error error) {
+            try { release(); } catch (Exception cleanup) { error.addSuppressed(cleanup); }
+            throw error;
+        }
+        release();
+        return "arrived";
+    }
+    /// Stops on a stale route, stalled step, or expired timeout; never repeats a placement after readback fails.
+    private void navigateStep(String world, String from, String to, boolean bridge, long deadline, OchreScript.Control control) throws Exception {
+        long stepEnd = control.now() + 3_000_000_000L;
+        boolean placed = false;
+        while (true) {
+            control.check();
+            if (control.now() >= deadline) throw new IllegalArgumentException("walk_to.timed_out at " + to);
+            if (control.now() >= stepEnd) throw new IllegalArgumentException("walk_to.stalled moving from " + from + " to " + to);
+            String status = required(request("script.nav.step", Map.of("owner", owner, "world", world, "from", from, "to", to,
+                    "bridge", Boolean.toString(bridge), "placed", Boolean.toString(placed))), "status");
+            if (status.equals("arrived")) return;
+            if (status.equals("placed")) { placed = true; control.sleep(.25); }
+            else if (status.equals("moving")) control.sleep(.05);
+            else throw new IllegalArgumentException("walk_to unknown step status: " + status);
+        }
     }
     /// Encodes a bounded integral argument without accepting truncated floats.
     private static String integer(Object value, int min, int max) { double number = value instanceof OchreScript.Quantity ? OchreScript.quantity(value, "distance") : OchreScript.number(value); if (number < min || number > max || number != Math.rint(number)) throw new IllegalArgumentException("Expected integer in [" + min + ", " + max + "]"); return Integer.toString((int) number); }

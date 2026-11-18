@@ -148,10 +148,10 @@
   },
   {
     "name": "player.walk_to",
-    "signature": "player.walk_to(...)",
-    "body": "此入口保留，但本版未接入寻路，调用会报能力不可用。不会通过传送代替。",
-    "example": "// player.walk_to(vec3(100, 64, 200));",
-    "permission": "player.move"
+    "signature": "player.walk_to(position, timeout=30s, bridge=false, straight=false)",
+    "body": "短距离走向目标脚底坐标（取整到方块），绕障并跨一格台阶。普通模式要求目标有地面；bridge=true 可尝试搭一段最多三格的桥。straight=true 只朝相邻的同高格移动，不绕路；与 bridge=true 一起用时，可先在该格脚下放置一块支撑再前进，无需已有对岸。需要手持合适建筑方块。仅使用已加载区域。",
+    "example": "player.walk_to(vec3(100, 64, 200), timeout=30s);",
+    "permission": "player.move, game.read, player.look; bridge=true: world.place"
   },
   {
     "name": "player.jump",
