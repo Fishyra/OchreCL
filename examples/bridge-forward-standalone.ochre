@@ -41,6 +41,11 @@ function equip_bridge_block() {
     return false;
 }
 
+// Test the same block center that walk_to uses, including at negative coordinates.
+function block_center(value) {
+    return value - (value % 1 + 1) % 1 + 0.5;
+}
+
 function bridge_forward() {
     Record start = player.snapshot();
     if (!start.in_world || !start.on_ground) {
@@ -62,21 +67,21 @@ function bridge_forward() {
             say("停止：世界或脚下状态已变化");
             return false;
         }
-        Vec3 next = vec3(current.x + dx, current.y, current.z + dz);
+        Vec3 next = vec3(block_center(current.x) + dx, current.y, block_center(current.z) + dz);
         Record space = world.collision(next);
         if (!space.clear) {
             say("停止：前方被挡住");
             return false;
         }
-        if (space.can_stand && built > 0) {
+        Record floor = world.block(vec3(next.x, next.y - 1, next.z));
+        if (!floor.air && space.can_stand && built > 0) {
             player.walk_to(next, timeout=6s, straight=true);
             say("已到达对岸，搭路结束");
             return true;
         }
-        if (space.can_stand) {
+        if (!floor.air && space.can_stand) {
             player.walk_to(next, timeout=6s, straight=true);
         } else {
-            Record floor = world.block(vec3(next.x, next.y - 1, next.z));
             if (!floor.air) {
                 say("停止：前方不能放置建筑方块");
                 return false;

@@ -109,7 +109,12 @@ public final class GameOverlay {
             if(fill==null) { fill=graphicsType.getMethod("fill",int.class,int.class,int.class,int.class,int.class); font=field(client,"font"); text=graphicsType.getMethod("text",font.getClass(),String.class,int.class,int.class,int.class,boolean.class); fontWidth=font.getClass().getMethod("width",String.class); }
             rounded(graphics,(int)width,(int)height,Math.min((expanded||running||granting)?18:BALL_SIZE/2,(int)height/2),(expanded||running||granting)?card:theme);
             if (granting && width>160) { drawText(graphics,"运行脚本所需权限",x+12,y+10,ink); for(int row=0;row<grantRows && grantPage*grantRows+row<grants.size();row++) { int i=grantPage*grantRows+row; double yy=y+34+row*22, bx=x+width-28; drawText(graphics,shorten(grants.get(i),(int)(width-60)/6),x+12,yy,ink); line(bx,yy,bx+12,yy,ink,1.2f);line(bx+12,yy,bx+12,yy+12,ink,1.2f);line(bx+12,yy+12,bx,yy+12,ink,1.2f);line(bx,yy+12,bx,yy,ink,1.2f);if(checkedGrants.contains(i)){line(bx+2,yy+6,bx+5,yy+9,accent,1.5f);line(bx+5,yy+9,bx+10,yy+2,accent,1.5f);} } drawText(graphics,"‹ 上一页    "+(grantPage+1)+" / "+Math.max(1,(grants.size()+grantRows-1)/grantRows)+"    下一页 ›",x+12,y+height-43,ink); drawText(graphics,"授权并运行",x+12,y+height-20,checkedGrants.size()==grants.size()?accent:0xff888888);drawText(graphics,"取消",x+width-42,y+height-20,ink); }
-            else if (running && width>160) { drawText(graphics,status.equals("paused")?"已暂停 · 继续              停止":"脚本运行中 · 停止",x+12,y+10,ink); drawText(graphics,shorten(current,(int)(width-24)/6),x+12,y+31,ink); }
+            else if (running && width>160) {
+                drawText(graphics,status.equals("paused")?"已暂停":"脚本运行中",x+12,y+10,ink);
+                drawScriptButton(graphics,"停止",scriptStopX());
+                if (status.equals("paused")) drawScriptButton(graphics,"继续",scriptStopX()-50);
+                drawText(graphics,shorten(current,(int)(width-24)/6),x+12,y+37,ink);
+            }
             else if (expanded && width>180 && height>80) {
                 paint.setFont(paint.getFont().deriveFont(java.awt.Font.BOLD,11f));
                 if(library) drawText(graphics,"脚本库",x+14,y+10,ink); else { drawText(graphics,quick?"视角与操作":"声音",x+30,y+10,ink);if(!quick)drawText(graphics,"视频",x+width/2+30,y+10,ink); line(x+13,y+14,x+19,y+11,ink,1.3f);line(x+19,y+11,x+19,y+22,ink,1.3f);line(x+19,y+22,x+13,y+19,ink,1.3f);line(x+13,y+14,x+13,y+19,ink,1.3f);paint.setColor(new java.awt.Color(ink,true));paint.draw(new java.awt.geom.Arc2D.Double(x+17,y+12,10,10,-60,120,java.awt.geom.Arc2D.OPEN));double vx=x+width/2+12;line(vx,y+12,vx+12,y+12,ink,1.3f);line(vx+12,y+12,vx+12,y+21,ink,1.3f);line(vx+12,y+21,vx,y+21,ink,1.3f);line(vx,y+21,vx,y+12,ink,1.3f); }
@@ -128,16 +133,31 @@ public final class GameOverlay {
     /// Keeps the edge nearest the ball fixed while its surface grows toward the available space.
     static double anchoredStart(double fraction,int viewport,double extent) { double start=4+fraction*Math.max(0,viewport-BALL_SIZE-8); if(fraction>=.5)start+=BALL_SIZE-extent;return Math.max(4,Math.min(start,viewport-extent-4)); }
     private static boolean contains(double px,double py) { return px>=x&&px<=x+width&&py>=y&&py<=y+height; }
+    /// Rightmost button origin, shared between rendering and hit testing.
+    private static double scriptStopX() { return x+width-54; }
+    /// Draws a distinct script action using the same bounds as its click region.
+    private static void drawScriptButton(Object graphics,String title,double left)throws Exception {
+        roundedAt(graphics,(int)left,(int)y+5,44,22,7,0x22716b5f);
+        drawText(graphics,title,left+10,y+10,ink);
+    }
+    /// Returns an action only inside its visible button; status and diagnostics are inert.
+    private static String scriptAction(double px,double py) {
+        if (width<=160 || py<y+5 || py>=y+27) return "";
+        double left=scriptStopX();
+        if (px>=left && px<left+44) return "stop";
+        if (status.equals("paused") && px>=left-50 && px<left-6) return "resume";
+        return "";
+    }
     /// Consumes only overlay interactions; existing screens retain all other input.
     public static boolean button(Object client,Object info,int action) {
         if(failed) return false;
         try { Object window=call(client,"getWindow"), mouse=field(client,"mouseHandler"); if(!pressed) { mx=((Number)mouse.getClass().getMethod("getScaledXPos",window.getClass()).invoke(mouse,window)).doubleValue()/uiScale; my=((Number)mouse.getClass().getMethod("getScaledYPos",window.getClass()).invoke(mouse,window)).doubleValue()/uiScale; } if (!pressed && (Boolean)call(field(client,"mouseHandler"),"isMouseGrabbed")) return false; int button=((Number)call(info,"button")).intValue(); if(button!=0) return false; if(action==0 && vanillaDrag){vanillaDrag=false;return false;}
             if(action==1) { if(!contains(mx,my)) { vanillaDrag=true;if(expanded || pointerReleased) { expanded=false;library=false;pointerReleased=false;if(call(field(client,"gui"),"screen")!=null)return false;restoreMouse(client);return true;} return false; } pressed=true;dragged=false;pressX=mx;pressY=my;startX=x;startY=y;
-                if(expanded&&!library&&my>=y+44&&my<y+139) { int row=(int)((my-y-36)/34),column=mx>x+width/2?1:0; if(row>=0&&row<3) { int index=row*2+column; if(quick&&index>=2){boolean before=switches[index-2];try{BridgeAgent.onGameThread(client,Map.of("command","options.set","option."+QUICK[index],Boolean.toString(!before)));switches[index-2]=!before;refreshOptionsScreen(client,QUICK[index]);}catch(Exception error){switches[index-2]=before;optionFailure(error);}}else {slider=index; lastSliderApply=0; adjust(client,false);} } } return true;
+                if(expanded&&!library&&!Set.of("running","paused","permission").contains(status)&&my>=y+44&&my<y+139) { int row=(int)((my-y-36)/34),column=mx>x+width/2?1:0; if(row>=0&&row<3) { int index=row*2+column; if(quick&&index>=2){boolean before=switches[index-2];try{BridgeAgent.onGameThread(client,Map.of("command","options.set","option."+QUICK[index],Boolean.toString(!before)));switches[index-2]=!before;refreshOptionsScreen(client,QUICK[index]);}catch(Exception error){switches[index-2]=before;optionFailure(error);}}else {slider=index; lastSliderApply=0; adjust(client,false);} } } return true;
             }
             if(action==0&&pressed) { pressed=false; if(slider>=0) { int finished=slider;adjust(client,true);slider=-1;refreshOptionsScreen(client,quick?QUICK[finished]:OPTIONS[finished]);return true; } if(dragged) { nx=Math.max(0,Math.min(1,((nx>=.5?x+width-BALL_SIZE:x)-4)/Math.max(1,windowWidth-BALL_SIZE-8)));ny=Math.max(0,Math.min(1,((ny>=.5?y+height-BALL_SIZE:y)-4)/Math.max(1,windowHeight-BALL_SIZE-8)));savePosition();return true; }
                 if(status.equals("permission")) { if(my>=y+height-27)event=mx>x+width-65?"stop":checkedGrants.size()==grants.size()?"grant:"+grantId+":approve":"";else if(my>=y+height-52){grantPage=Math.max(0,Math.min(Math.max(0,(grants.size()-1)/grantRows),grantPage+(mx>x+width/2?1:-1)));}else {int i=grantPage*grantRows+(int)((my-y-34)/22);if(my>=y+34&&i<grants.size())event="grant:"+grantId+":"+i;}return true; }
-                if(status.equals("running")||status.equals("paused")) { event=status.equals("paused")&&mx<x+width-65?"resume":"stop";return true; }
+                if(status.equals("running")||status.equals("paused")) { String selected=scriptAction(mx,my);if(!selected.isEmpty()&&selected.equals(scriptAction(pressX,pressY)))event=selected;return true; }
                 if(!expanded) { expanded=true;library=false;pointerReleased=true;return true; }
                 if(my<y+28 && mx>x+width-36) { expanded=false;library=false;restoreMouse(client);return true; }
                 if(library) { int row=(int)((my-y-32)/20);if(my>y+height-26) { if(mx<x+width/2)page=Math.max(0,page-1);else if((page+1)*8<total)page++; } else if(row>=0&&row<scripts.size()) { event="run:"+scripts.get(row);expanded=false;library=false;restoreMouse(client); } }

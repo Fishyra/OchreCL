@@ -8,7 +8,7 @@ import static io.ochre.bridge.ActionSupport.*;
 
 /// Loaded-block inspection and ordinary reach/visibility-checked mining and placement.
 final class BlockActions {
- private static String miningOwner="", miningWorld="", miningType="";private static Object miningPos, miningClient;private static long expires;
+ private static String miningOwner="", miningWorld="", miningType="";private static Object miningPos, miningKey;private static volatile Object miningClient;private static long expires;
  private static final AtomicBoolean queued=new AtomicBoolean();
  private static final ScheduledExecutorService timer=Executors.newSingleThreadScheduledExecutor(task->{Thread t=new Thread(task,"OchreBridge mining lease");t.setDaemon(true);return t;});
  static {timer.scheduleWithFixedDelay(()->{Object c=miningClient;if(c instanceof Executor e&&queued.compareAndSet(false,true))try{e.execute(()->{try{if(!miningOwner.isEmpty()&&(System.nanoTime()>expires||InputActions.screen(c)!=null||(Boolean)call(c,"isPaused")||!world(c).equals(miningWorld)))stop();}catch(Exception ignored){try{stop();}catch(Exception ignoredAgain){}}finally{queued.set(false);}});}catch(Exception ignored){queued.set(false);}},100,100,TimeUnit.MILLISECONDS);}
@@ -25,7 +25,7 @@ final class BlockActions {
  }
  private static Object face(Object client,Map<String,String> request)throws Exception{String name=request.getOrDefault("face","up").toUpperCase(Locale.ROOT);if(name.equals("TOP"))name="UP";if(name.equals("BOTTOM"))name="DOWN";try{return type(client,"net.minecraft.core.Direction").getField(name).get(null);}catch(NoSuchFieldException e){throw new IOException("block.face.invalid");}}
  private static void permitted(Object client,Object pos)throws Exception{Object player=player(client);interactive(client);if((Boolean)call(player,"isSpectator"))throw new IOException("permission.spectator.cannot.modify.blocks");Object level=field(client,"level");if(!(Boolean)level.getClass().getMethod("mayInteract",type(client,"net.minecraft.world.entity.Entity"),type(client,"net.minecraft.core.BlockPos")).invoke(level,player,pos))throw new IOException("permission.block.denied");}
- private static void stop()throws Exception{Object c=miningClient;miningOwner="";miningPos=null;miningWorld="";expires=0;if(c!=null)call(field(c,"gameMode"),"stopDestroyBlock");}
+ private static void stop()throws Exception{Object c=miningClient,key=miningKey;miningOwner="";miningPos=null;miningWorld="";miningKey=null;expires=0;try{if(key!=null)key.getClass().getMethod("setDown",boolean.class).invoke(key,false);}finally{if(c!=null)call(field(c,"gameMode"),"stopDestroyBlock");}}
  static void handle(Object client,Map<String,String> request,Map<String,String> response)throws Exception{
   String command=request.getOrDefault("command","");
   if(command.equals("script.block.stop")){if(miningOwner.equals(owner(request)))stop();return;}
@@ -34,14 +34,32 @@ final class BlockActions {
   String expected=request.getOrDefault("expected","");if(!expected.isEmpty()&&!expected.equals(blockId(state)))throw new IOException("block.target.changed");
   if(command.equals("script.block.read"))return;
   permitted(client,pos);Object player=player(client),mode=field(client,"gameMode"),face=face(client,request);
+  if(command.equals("script.block.open_crafting")){
+   if(!"minecraft:crafting_table".equals(blockId(state)))throw new IOException("craft.expected.crafting.table");
+   Object target=hit(client,pos,face,false),hand=type(client,"net.minecraft.world.InteractionHand").getField("MAIN_HAND").get(null);
+   Object outcome=mode.getClass().getMethod("useItemOn",type(client,"net.minecraft.client.player.LocalPlayer"),type(client,"net.minecraft.world.InteractionHand"),type(client,"net.minecraft.world.phys.BlockHitResult")).invoke(mode,player,hand,target);
+   if(!(Boolean)call(outcome,"consumesAction"))throw new IOException("craft.table.not.opened");
+   return;
+  }
   if(command.equals("script.block.mine")){
    String next=owner(request);if(!miningOwner.isEmpty()&&System.nanoTime()>expires)stop();if(!miningOwner.isEmpty()&&!miningOwner.equals(next))throw new IOException("block.mining.busy");
    if((Boolean)call(state,"isAir")){response.put("status","client_observed_break");return;}
-   if((Boolean)call(field(field(client,"options"),"keyAttack"),"isDown"))throw new IOException("block.manual.attack.active");hit(client,pos,face,false);
+   Object key=field(field(client,"options"),"keyAttack");
+   if(miningOwner.isEmpty()&&(Boolean)call(key,"isDown"))throw new IOException("block.manual.attack.active");
+   Object aimed=hit(client,pos,face,false);
    boolean start=miningOwner.isEmpty();if(start&&(Boolean)call(mode,"isDestroying"))throw new IOException("block.manual.mining.active");
    if(!start&&(!miningPos.equals(pos)||!miningWorld.equals(world(client))||!miningType.equals(blockId(state))))throw new IOException("block.target.changed");
    miningOwner=next;miningClient=client;miningPos=pos;miningWorld=world(client);miningType=blockId(state);expires=System.nanoTime()+750_000_000L;
-   try{Object accepted=mode.getClass().getMethod(start?"startDestroyBlock":"continueDestroyBlock",type(client,"net.minecraft.core.BlockPos"),type(client,"net.minecraft.core.Direction")).invoke(mode,pos,face);if(!Boolean.TRUE.equals(accepted))throw new IOException("block.mine.not.accepted");}catch(Exception e){stop();throw e;}
+   // The native tick cancels mining whenever attack is not held; use its normal continued attack path.
+   try{
+    if(start){
+     Object accepted=mode.getClass().getMethod("startDestroyBlock",type(client,"net.minecraft.core.BlockPos"),type(client,"net.minecraft.core.Direction")).invoke(mode,pos,call(aimed,"getDirection"));
+     if(!Boolean.TRUE.equals(accepted))throw new IOException("block.mine.not.accepted");
+     if(!(Boolean)call(state(client,pos),"isAir")){
+      miningKey=key;key.getClass().getMethod("setDown",boolean.class).invoke(key,true);
+     }
+    }
+   }catch(Exception e){stop();throw e;}
    response.put("status",(Boolean)call(state(client,pos),"isAir")?"client_observed_break":"mining");return;
   }
   if(!command.equals("script.block.place"))throw new IOException("command.unsupported");

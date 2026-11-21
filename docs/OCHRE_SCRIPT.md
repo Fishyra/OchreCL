@@ -74,6 +74,12 @@ player.hit(count=3, interval=3s);
 
 `straight=true` 只允许走到相邻、同高的一格；与 `bridge=true` 一起使用时可先填补脚下的一格空气再前进，无需先找到对岸。`examples/bridge-forward-standalone.ochre` 是可直接运行的脚本：自动取料，沿起始视角最接近的东西南北方向逐格搭路，直到上岸或无法继续。受正常脚本的单次运行预算限制。
 
+`player.try_walk_to(position, timeout=30s)` 仅步行。规划阶段没有可行路线时返回 `"unreachable"`，可换落脚点或目标；执行中途受阻等错误仍会报出。它与 `walk_to` 使用相同的读取、视角和移动权限。
+
+`player.find_recipe(item)` 按产物 ID 查找已解锁、当前背包材料足够的合成配方，返回包含 `display_id` 的记录或 `none`。调用 `player.craft(recipe.display_id)` 仍需合适的合成网格。`player.open_crafting_table(position)` 使用普通方块交互，目标需可见且在交互距离内。它需要 `inventory.write`、`game.read` 和 `player.look`。
+
+`examples/spawn-to-wooden-pickaxe.ochre` 从附近已加载区块查找普通橡树、白桦或云杉，尝试从不同方向接近，采集并确认三块原木，再制作木板、工作台、木棍和木镐。需要普通完整方块地面和空余背包空间；不保证任意出生点均可完成。工作台放下后留在世界里。
+
 攻击针对当前准星下的实体，检查旁观模式、真实交互距离与攻击冷却，走普通客户端攻击 API，最终结果仍由服务器规则决定；次数是尝试次数，不保证造成伤害。`interval` 表示尝试间隔，`duration` 表示总调度时长，两者不能同时指定。最多 100 次，最短间隔 100ms，总计划最长 120 秒。
 
 ## 权限与停止

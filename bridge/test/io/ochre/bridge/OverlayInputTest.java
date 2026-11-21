@@ -23,7 +23,17 @@ public final class OverlayInputTest {
   c.mouseHandler.x=250;c.mouseHandler.y=60;GameOverlay.button(c,b,1);GameOverlay.button(c,b,0);var event=GameOverlay.class.getDeclaredField("event");event.setAccessible(true);check("grant:fixture:0".equals(event.get(null)),"permission checkbox publishes exact request and index");
   set("event","");c.mouseHandler.x=40;c.mouseHandler.y=190;GameOverlay.button(c,b,1);GameOverlay.button(c,b,0);check("".equals(event.get(null)),"cannot approve unchecked permissions");
   var checked=GameOverlay.class.getDeclaredField("checkedGrants");checked.setAccessible(true);((java.util.Set<Integer>)checked.get(null)).addAll(java.util.List.of(0,1));GameOverlay.button(c,b,1);GameOverlay.button(c,b,0);check("grant:fixture:approve".equals(event.get(null)),"all checks enable approval");
-  System.out.println("PASS: actual cursor refresh, edge expansion and precise close hitbox");
+  set("status","paused");set("height",66d);set("event","");
+  c.mouseHandler.x=248;c.mouseHandler.y=36;
+  check(GameOverlay.button(c,b,1)&&GameOverlay.button(c,b,0),"stop click is consumed by the overlay");
+  check("stop".equals(event.get(null))&&!c.mouseHandler.grabbed,"visible stop button sends stop without grabbing the mouse");
+  set("event","");c.mouseHandler.x=198;
+  check(GameOverlay.button(c,b,1)&&GameOverlay.button(c,b,0),"resume click is consumed by the overlay");
+  check("resume".equals(event.get(null)),"visible resume button sends resume");
+  set("event","");c.mouseHandler.y=57;
+  check(GameOverlay.button(c,b,1)&&GameOverlay.button(c,b,0),"diagnostics click does not reach the underlying menu");
+  check("".equals(event.get(null)),"diagnostics do not resume or stop the script");
+  System.out.println("PASS: actual cursor refresh, edge expansion and precise pause controls");
  }
  private static void check(boolean value,String message){if(!value)throw new AssertionError(message);}
 }

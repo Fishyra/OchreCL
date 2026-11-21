@@ -267,7 +267,16 @@ public final class OchreScriptDrafts extends BorderPane {
     /// Confirms the pending resume request without approving unrelated future prompts.
     public static void resumeFor(String key) { @Nullable var active = ACTIVE.get(key); if (active != null && active.resume != null) active.resume.complete(true); }
     /// Cancels the instance run requested from either the launcher or the in-game surface.
-    public static void stopFor(String key) { @Nullable Running active = ACTIVE.get(key); if (active != null) active.control.cancel(); @Nullable var pending = GRANTS.remove(key); if (pending != null) Platform.runLater(() -> closeWorkspaceDialog(pending.stage())); }
+    public static void stopFor(String key) {
+        @Nullable Running active = ACTIVE.get(key);
+        if (active != null) {
+            active.control.cancel();
+            @Nullable var confirmation = active.resume;
+            if (confirmation != null) confirmation.complete(false);
+        }
+        @Nullable var pending = GRANTS.remove(key);
+        if (pending != null) Platform.runLater(() -> closeWorkspaceDialog(pending.stage()));
+    }
     /// Publishes an immutable grant snapshot on the JavaFX thread before bridge polling.
     public static java.util.@org.jetbrains.annotations.Unmodifiable Map<String, String> grantState(String key) { @Nullable var pending = GRANTS.get(key); if (pending == null) return Map.of(); Map<String, String> fields = new LinkedHashMap<>(); fields.put("status", "permission"); fields.put("grant_id", pending.id()); fields.put("grant_count", Integer.toString(pending.boxes().size())); for (int i = 0; i < pending.boxes().size(); i++) { var box = pending.boxes().get(i); fields.put("grant." + i, String.valueOf(box.getUserData())); fields.put("grant_checked." + i, Boolean.toString(box.isSelected())); } return Map.copyOf(fields); }
     /// Handles only a matching pending request; no permission can be toggled after its run starts.

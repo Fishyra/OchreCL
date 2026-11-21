@@ -1,0 +1,147 @@
+// Start on ordinary solid ground in a single-player survival world.
+// The script stops with a reason if no supported tree or workable site is nearby.
+function count_item(id) {
+    int total = 0;
+    for (slot in player.inventory.slots) {
+        if (slot != none && slot.id == id) { total = total + slot.count; }
+    }
+    return total;
+}
+
+function center(value) {
+    return value - (value % 1 + 1) % 1 + 0.5;
+}
+
+function craft_item(id) {
+    int before = count_item(id);
+    for (int attempt = 0; attempt < 12; attempt++) {
+        Record recipe = player.find_recipe(id);
+        if (recipe != none) {
+            player.craft(recipe.display_id);
+            for (int tick = 0; tick < 16; tick++) {
+                if (count_item(id) > before) { return true; }
+                sleep(150ms);
+            }
+            print("合成后未在背包确认产物：", id);
+            return false;
+        }
+        sleep(200ms);
+    }
+    print("没有已解锁且材料足够的配方：", id);
+    return false;
+}
+
+function approach(x, y, z) {
+    for (int side = 0; side < 4; side++) {
+        int dx = 0;
+        int dz = 0;
+        if (side == 0) { dx = 1; }
+        if (side == 1) { dx = -1; }
+        if (side == 2) { dz = 1; }
+        if (side == 3) { dz = -1; }
+        for (int dy = -2; dy <= 1; dy++) {
+            Vec3 feet = vec3(x + dx, y + dy, z + dz);
+            if (world.can_stand(feet) && player.try_walk_to(feet, timeout=12s) == "arrived") { return true; }
+        }
+    }
+    return false;
+}
+
+function gather_tree(log_id) {
+    Record tree = world.nearest_block(log_id, radius=12);
+    if (tree == none) { return false; }
+    float x = center(tree.position.x);
+    float z = center(tree.position.z);
+    float bottom = tree.position.y - 0.5;
+    Record below = world.block(vec3(x, bottom - 1, z));
+    for (int depth = 0; depth < 5 && below.id == log_id; depth++) {
+        bottom--;
+        below = world.block(vec3(x, bottom - 1, z));
+    }
+    if (!approach(x, bottom, z)) { return false; }
+    Record stance = player.snapshot();
+    string face = "north";
+    float dx = stance.x - x;
+    float dz = stance.z - z;
+    if (dx * dx > dz * dz) {
+        if (dx > 0) { face = "east"; }
+        else { face = "west"; }
+    } else if (dz > 0) { face = "south"; }
+    int before = count_item(log_id);
+    for (int height = 0; height < 3; height++) {
+        Vec3 trunk = vec3(x, bottom + height, z);
+        Record block = world.block(trunk);
+        if (block.id == log_id) { player.mine(block, face=face, timeout=10s); }
+    }
+    Vec3 pile = vec3(x, bottom, z);
+    if (world.can_stand(pile)) { player.try_walk_to(pile, timeout=6s); }
+    for (int tick = 0; tick < 15; tick++) {
+        if (count_item(log_id) >= before + 3) { return true; }
+        sleep(200ms);
+    }
+    print("未拾取到三块原木：", log_id);
+    return false;
+}
+
+function select_table() {
+    int table_slot = -1;
+    int empty = -1;
+    int index = 0;
+    for (slot in player.inventory.slots) {
+        if (slot == none && index < 9 && empty < 0) { empty = index; }
+        if (slot != none && slot.slot < 36 && slot.id == "minecraft:crafting_table" && table_slot < 0) { table_slot = slot.slot; }
+        index++;
+    }
+    if (table_slot < 0) { return false; }
+    if (table_slot >= 9) {
+        if (empty < 0) { print("请留一个空快捷栏格"); return false; }
+        player.move_item(table_slot, empty);
+        sleep(250ms);
+        table_slot = empty;
+    }
+    player.select_hotbar(table_slot);
+    Record selected = player.snapshot();
+    return selected.item == "minecraft:crafting_table";
+}
+
+function place_table() {
+    Record feet = player.snapshot();
+    for (int side = 0; side < 4; side++) {
+        int dx = 0;
+        int dz = 0;
+        if (side == 0) { dx = 1; }
+        if (side == 1) { dx = -1; }
+        if (side == 2) { dz = 1; }
+        if (side == 3) { dz = -1; }
+        float x = center(feet.x) + dx;
+        float z = center(feet.z) + dz;
+        Vec3 spot = vec3(x, feet.y, z);
+        Record air = world.block(spot);
+        Record support = world.block(vec3(x, feet.y - 1, z));
+        if (air.air && support.solid && world.can_stand(spot)) {
+            return player.place_block(support, face="up");
+        }
+    }
+    print("附近没有合适的工作台摆放位置");
+    return none;
+}
+
+function run_pickaxe() {
+    if (count_item("minecraft:wooden_pickaxe") > 0) { return true; }
+    string planks = "";
+    if (gather_tree("minecraft:oak_log")) { planks = "minecraft:oak_planks"; }
+    else if (gather_tree("minecraft:birch_log")) { planks = "minecraft:birch_planks"; }
+    else if (gather_tree("minecraft:spruce_log")) { planks = "minecraft:spruce_planks"; }
+    if (planks == "") { print("找不到可到达并能采集的橡树、白桦或云杉"); return false; }
+    if (!craft_item(planks) || !craft_item(planks) || !craft_item(planks)) { return false; }
+    if (!craft_item("minecraft:crafting_table") || !craft_item("minecraft:stick")) { return false; }
+    if (!select_table()) { print("无法选中工作台"); return false; }
+    Record table = place_table();
+    if (table == none) { return false; }
+    player.open_crafting_table(table.position);
+    sleep(450ms);
+    return craft_item("minecraft:wooden_pickaxe");
+}
+
+if (run_pickaxe()) { say("已确认背包里有木镐"); }
+else { say("任务未完成，具体原因见脚本输出"); }

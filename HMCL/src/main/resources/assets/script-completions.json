@@ -154,6 +154,27 @@
     "permission": "player.move, game.read, player.look; bridge=true: world.place"
   },
   {
+    "name": "player.try_walk_to",
+    "signature": "player.try_walk_to(position, timeout=30s)",
+    "body": "尝试步行到脚底坐标；找不到可行路线时返回 unreachable，成功返回 arrived。执行期间的异常仍报错。不放置方块。",
+    "example": "print(player.try_walk_to(vec3(100, 64, 200)));",
+    "permission": "player.move, game.read, player.look"
+  },
+  {
+    "name": "player.find_recipe",
+    "signature": "player.find_recipe(item)",
+    "body": "按产物 ID 查找已解锁且背包材料足够的合成配方。返回带 display_id 的记录，找不到则返回 none。仍需在合适的合成网格执行。",
+    "example": "Record recipe = player.find_recipe(\"minecraft:stick\");",
+    "permission": "game.read"
+  },
+  {
+    "name": "player.open_crafting_table",
+    "signature": "player.open_crafting_table(position)",
+    "body": "瞄准并尝试打开指定坐标的工作台。须可见并在交互范围内。",
+    "example": "player.open_crafting_table(vec3(100, 64, 200));",
+    "permission": "inventory.write, game.read, player.look"
+  },
+  {
     "name": "player.jump",
     "signature": "player.jump()",
     "body": "无参数；须在世界中且脚踩地面，执行普通跳跃。空中调用会失败。",

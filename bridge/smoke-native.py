@@ -171,6 +171,23 @@ try:
   report_data={'snapshot':snap,'observations':observation,'input':key,'text':typed,'block':read,'farRejected':far,'chatCommandRejected':blocked,'target':target,'mine':mine,'afterMine':removed,'place':place,'afterPlace':restored}
   (root/'bridge/build/foundation-smoke.json').write_text(json.dumps(report_data,indent=2))
   print('FOUNDATIONS_NATIVE_OK: world snapshot, movement events, held/released key, Unicode text events, loaded block reads, actual mining/placement readback, reach and command rejection')
+  if os.environ.get('OCHRE_TEST_PICKAXE'):
+   fixture(['kill @e[type=minecraft:cow]','kill @e[type=minecraft:item]','clear BridgeSmoke',
+            'fill -6 89 -6 12 96 6 minecraft:air','fill -6 89 -6 12 89 6 minecraft:grass_block',
+            'fill 5 90 0 5 93 0 minecraft:oak_log','fill 2 90 0 2 91 0 minecraft:stone',
+            'gamemode survival BridgeSmoke','tp BridgeSmoke 0.5 90 0.5'])
+   bridge_folder=work/'.ochre-bridge';bridge_folder.mkdir()
+   (bridge_folder/'settings.properties').write_text('enabled=true\nagent=fixture.jar\n')
+   (bridge_folder/'fixture.jar').touch()
+   __import__('shutil').copy2(cfg,bridge_folder/'launch.properties')
+   __import__('shutil').copy2(work/'connection.properties',bridge_folder/'connection.properties')
+   fx=list((root/'builds/script-runner-preview/javafx').glob('*.jar'))
+   if not fx:
+    fx=list((root/'.gradle-home/caches').rglob('javafx-*-mac-aarch64.jar'))
+   subprocess.run(['/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home/bin/java','-cp',
+                   os.pathsep.join(map(str,[root/'hmcl-source/HMCL/build/libs/HMCL-3.17.SNAPSHOT.jar',*fx])),
+                   str(root/'bridge/test/io/ochre/bridge/SpawnToPickaxeProbe.java'),str(work),
+                   str(root/'examples/spawn-to-wooden-pickaxe.ochre')],check=True,timeout=90)
   if os.environ.get('OCHRE_TEST_NAVIGATION'):
    def navigate(goal, bridge, straight=False):
     world=request({'command':'script.context'})['world']

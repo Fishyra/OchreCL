@@ -68,7 +68,7 @@ public final class BridgeAgent {
         Object options = client.getClass().getField("options").get(client); Map<String, String> response = new LinkedHashMap<>(); response.put("gameVersion", game); response.put("bridgeVersion", "0.3.0-alpha");
         StringBuilder capabilities = new StringBuilder("state.read,script.inventory,script.players,script.look,script.move,script.hit,script.release,script.jump,script.command,script.effects,script.state.set,script.hotbar,script.inventory.move,script.recipes,script.craft.place,script.craft.ready,script.craft.take,script.nearest,overlay.sync,overlay.say,script.inspect,script.target,script.collision,script.item.tags,script.container.read,script.container.act,script.input.read,script.context,script.ui.close,script.observe,script.snapshot,script.block.read,script.block.target,script.block.mine,script.block.place,script.block.stop,script.input.key,script.input.text,script.input.heartbeat,script.input.release,script.chat");
         for (String name : OPTIONS) try { option(options, name); capabilities.append(',').append("option.").append(name); } catch (ReflectiveOperationException ignored) { }
-        response.put("capabilities", capabilities.append(",script.nav.plan,script.nav.step").toString());
+        response.put("capabilities", capabilities.append(",script.nav.plan,script.nav.step,script.block.open_crafting,script.recipe.find").toString());
         PlayerObservations.ensure(client);
         String command = request.getOrDefault("command", "hello");
         switch (command) {
@@ -86,7 +86,8 @@ public final class BridgeAgent {
             case "script.ui.close" -> { ActionSupport.sameWorld(client, request); Object screen = InputActions.screen(client); String token = screen == null ? "none" : Integer.toString(System.identityHashCode(screen)); if (!token.equals(request.get("screen_token"))) throw new IOException("game.ui.changed;confirmation.required.again"); for (int i = 0; i < 8 && screen != null; i++) { call(screen, "onClose"); Object next = InputActions.screen(client); if (next == screen) throw new IOException("game.ui.cannot.close.safely"); screen = next; } if (screen != null) throw new IOException("game.ui.too.many.parents"); response.put("status", "closed"); }
             case "script.observe" -> PlayerObservations.events(client, request, response);
             case "script.snapshot" -> response.putAll(PlayerObservations.snapshot(client));
-            case "script.block.read", "script.block.target", "script.block.mine", "script.block.place", "script.block.stop" -> BlockActions.handle(client, request, response);
+            case "script.block.read", "script.block.target", "script.block.mine", "script.block.place", "script.block.stop", "script.block.open_crafting" -> BlockActions.handle(client, request, response);
+            case "script.recipe.find" -> ExtendedActions.findRecipe(client, ActionSupport.player(client), request, response);
             case "script.input.key", "script.input.text", "script.input.heartbeat", "script.input.release", "script.chat" -> InputActions.handle(client, request, response);
             case "hello" -> { response.put("overlay", Boolean.toString(OverlayTransformer.gui && OverlayTransformer.mouse)); }
             case "overlay.sync" -> GameOverlay.sync(request, response);

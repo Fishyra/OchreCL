@@ -1,0 +1,12 @@
+{
+  "version": "0.3.0-alpha.8",
+  "update_jar_sha256": "62a8ecc09bb9212b43946159caebfded29aeed5b7c9e941f1015f91b6b49c652",
+  "source_inputs": 1145,
+  "changes": [
+    "Standalone bridging checks the destination cell center and its own support block",
+    "Overlay stop cancels pending confirmation without resuming the game",
+    "Spawn-to-wooden-pickaxe script and recipe/route/crafting-table commands",
+    "Survival mining advances through normal held-attack ticks"
+  ],
+  "validation": "Fabric 26.2 isolated survival fixture: real launcher host found a tree, navigated, mined, crafted and confirmed a wooden pickaxe in inventory"
+}

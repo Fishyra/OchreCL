@@ -82,6 +82,30 @@ public final class ExtendedActions {
     }
     private static List<Object> entries(Object player) throws Exception { List<Object> entries = new ArrayList<>(); for (Object collection : (List<?>) call(call(player, "getRecipeBook"), "getCollections")) for (Object entry : (List<?>) call(collection, "getRecipes")) { entries.add(entry); if (entries.size() > 4096) throw new IOException("recipe.limit"); } return entries; }
     private static void recipes(Object player, Map<String, String> response) throws Exception { List<Object> recipes = entries(player); int size = Math.min(64, recipes.size()); response.put("count", Integer.toString(size)); for (int i = 0; i < size; i++) response.put("recipe." + i + ".display_id", call(call(recipes.get(i), "id"), "index").toString()); response.put("truncated", Boolean.toString(recipes.size() > size)); }
+    /// Finds an unlocked crafting recipe whose result and inventory requirements match.
+    static void findRecipe(Object client, Object player, Map<String,String> request, Map<String,String> response) throws Exception {
+        String wanted = request.getOrDefault("item", "");
+        if (!wanted.matches("[a-z0-9_.-]+:[a-z0-9_/.-]+")) throw new IOException("recipe.result.invalid");
+        Class<?> contentsType = type(client, "net.minecraft.world.entity.player.StackedItemContents");
+        Object contents = contentsType.getConstructor().newInstance(), inventory = call(player, "getInventory");
+        inventory.getClass().getMethod("fillStackedContents", contentsType).invoke(inventory, contents);
+        for (Object entry : entries(player)) {
+            Object display = call(entry, "display");
+            String kind = display.getClass().getSimpleName();
+            if (!kind.equals("ShapedCraftingRecipeDisplay") && !kind.equals("ShapelessCraftingRecipeDisplay")) continue;
+            Object result = call(display, "result");
+            Object holder;
+            switch (result.getClass().getSimpleName()) {
+                case "ItemSlotDisplay" -> holder = call(result, "item");
+                case "ItemStackSlotDisplay" -> holder = call(call(result, "stack"), "item");
+                default -> { continue; }
+            }
+            if (!wanted.equals(identifier(call(holder, "value")))) continue;
+            if (!(Boolean) entry.getClass().getMethod("canCraft", contentsType).invoke(entry, contents)) continue;
+            response.put("display_id", call(call(entry, "id"), "index").toString());
+            break;
+        }
+    }
     private static void placeRecipe(Object client, Object player, Map<String, String> request) throws Exception {
         String next = owner(request); int id = integer(request, "display_id", 0, Integer.MAX_VALUE); Object selected = null; for (Object entry : entries(player)) if (((Number) call(call(entry, "id"), "index")).intValue() == id) { selected = entry; break; } if (selected == null) throw new IOException("recipe.not.unlocked");
         Object menu = field(player, "containerMenu"); String kind = menu.getClass().getName(); if (!Set.of("net.minecraft.world.inventory.InventoryMenu", "net.minecraft.world.inventory.CraftingMenu").contains(kind)) throw new IOException("craft.requires.inventory.or.crafting.table"); if (!(Boolean) call(call(menu, "getCarried"), "isEmpty")) throw new IOException("inventory.cursor.not.empty"); Object output = menu.getClass().getMethod("getSlot", int.class).invoke(menu, 0); if (!(Boolean) call(call(output, "getItem"), "isEmpty")) throw new IOException("craft.clear.previous.output.first");
